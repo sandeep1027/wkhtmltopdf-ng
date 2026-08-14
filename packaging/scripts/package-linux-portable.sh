@@ -208,7 +208,17 @@ It will run on Linux with that glibc or newer.
 
 qpdf is bundled when present on the build machine. Headers that use
 [page]/[topage], outlines, and --copies need bin/qpdf.
+
+Copyright and third-party licenses (Qt, qpdf, this project) are in
+NOTICE and LICENSE in this folder. This is not official wkhtmltopdf.
 EOF
+
+if [ -f "$root/NOTICE" ]; then
+    cp -a "$root/NOTICE" "$prefix/NOTICE"
+fi
+if [ -f "$root/LICENSE" ]; then
+    cp -a "$root/LICENSE" "$prefix/LICENSE"
+fi
 
 mkdir -p "$out_dir"
 # xz is typically 30–40% smaller than gzip for this Chromium tree.

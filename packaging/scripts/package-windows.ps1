@@ -79,8 +79,17 @@ Headless use is supported. If a convert fails on a server, set:
 
   set QT_QPA_PLATFORM=offscreen
   set QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu
+
+Copyright and third-party licenses (Qt, qpdf, this project) are in
+NOTICE and LICENSE. This is not official wkhtmltopdf.
 "@
 Set-Content -Path (Join-Path $stageDir "README.txt") -Value $readme
+if (Test-Path (Join-Path $Source "NOTICE")) {
+    Copy-Item (Join-Path $Source "NOTICE") (Join-Path $stageDir "NOTICE")
+}
+if (Test-Path (Join-Path $Source "LICENSE")) {
+    Copy-Item (Join-Path $Source "LICENSE") (Join-Path $stageDir "LICENSE")
+}
 
 if (-not (Test-Path $Output)) { New-Item -ItemType Directory -Force -Path $Output | Out-Null }
 $version = (Get-Content (Join-Path $Source "VERSION")).Trim()

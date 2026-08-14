@@ -1,0 +1,41 @@
+wkhtmltopdf-ng
+==============
+
+Copyright (c) 2026 sandeep1027 and contributors.
+https://github.com/sandeep1027/wkhtmltopdf-ng
+
+This software is released under the GNU Lesser General Public License
+version 3 (LGPL-3.0). See LICENSE.
+
+This is an independent project. It is not the official wkhtmltopdf
+project and is not affiliated with wkhtmltopdf.org.
+
+
+Third-party software
+--------------------
+
+1. Qt 6 and Qt WebEngine (Chromium)
+   Copyright The Qt Company Ltd. and Qt contributors.
+   License: LGPL-3.0 (and other terms shipped by Qt).
+   https://www.qt.io/licensing/
+   WebEngine also includes Chromium and other third-party components
+   under their own licenses, as documented by The Qt Company.
+
+2. qpdf
+   Copyright Jay Berkenbilt and contributors.
+   License: Apache License 2.0.
+   https://github.com/qpdf/qpdf
+
+3. Original wkhtmltopdf (reference only)
+   Copyright wkhtmltopdf authors.
+   License: LGPL-3.0.
+   https://wkhtmltopdf.org/
+   https://github.com/wkhtmltopdf/wkhtmltopdf
+   wkhtmltopdf-ng is a new implementation using Qt WebEngine. It aims
+   for CLI/C-API familiarity. It is not a copy of the archived Qt
+   WebKit sources.
+
+When you distribute the portable tarball or zip, you also distribute
+Qt, Chromium components, and (if bundled) qpdf. Keep this NOTICE and
+LICENSE with those binaries. Do not copy only the wkhtmltopdf-ng
+executable.

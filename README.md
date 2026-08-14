@@ -4,7 +4,8 @@ HTML to PDF and HTML to image CLI, built on **Qt 6 WebEngine** (Chromium).
 It is a modern replacement for archived [wkhtmltopdf](https://wkhtmltopdf.org/)
 (Qt WebKit).
 
-Version **0.13.2**. License: LGPL-3.0.
+Version **0.13.2**. License: LGPL-3.0. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).
+This project is independent and is not affiliated with wkhtmltopdf.org.
 
 Full flag list, packaging, limits, and tests: [`docs/DOC.txt`](docs/DOC.txt).
 
