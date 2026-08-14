@@ -1,7 +1,18 @@
-wkhtmltopdf-ng 0.13.1
+wkhtmltopdf-ng 0.13.2
 
 Qt 6 WebEngine (Chromium) HTML-to-PDF and HTML-to-image converter.
 Replacement for archived wkhtmltopdf 0.12.x (Qt WebKit).
+
+New in 0.13.2
+  Split, merge, and insert existing PDFs with qpdf (no HTML render).
+  Example: insert extra.pdf after page 3 of a 4-page original:
+
+    wkhtmltopdf-ng --insert-pdf extra.pdf --after-page 3 original.pdf out.pdf
+
+  Also:
+    --merge-pdf a.pdf b.pdf combined.pdf
+    --split-pdf --page-ranges 1-2 original.pdf first-two.pdf
+    --split-pdf --split-pages original.pdf out.pdf
 
 Smaller portable archives than 0.13.0: English locales only, no DevTools
 pack, stripped binaries, xz compression. Chromium is still ~160 MB, so
@@ -19,7 +30,7 @@ Assets
 CentOS / RHEL 7 is not supported. Use Docker (packaging/run-docker.sh).
 
 Quick test
-  tar -xJf wkhtmltopdf-ng_0.13.1_linux-amd64.tar.xz
+  tar -xJf wkhtmltopdf-ng_0.13.2_linux-amd64.tar.xz
   cd wkhtmltopdf-ng
   export QT_QPA_PLATFORM=offscreen
   export QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox
@@ -34,5 +45,6 @@ Included
   image-dpi / image-quality / lowquality
   compress, encrypt, linearize, watermark (qpdf)
   cover / toc / page objects
+  merge / split / insert existing PDFs
 
 See README.md and docs/DOC.txt.

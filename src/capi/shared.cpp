@@ -20,7 +20,7 @@ int wkhtmltopdf_extended_qt(void)
 
 const char* wkhtmltopdf_version(void)
 {
-    static const char version[] = "0.13.1 (Qt WebEngine)";
+    static const char version[] = "0.13.2 (Qt WebEngine)";
     return version;
 }
 

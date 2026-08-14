@@ -1,4 +1,4 @@
-wkhtmltopdf-ng 0.13.1
+wkhtmltopdf-ng 0.13.2
 =====================
 
 Qt 6 WebEngine (Chromium) HTML-to-PDF and HTML-to-image converter.
@@ -203,12 +203,12 @@ This is NOT a single static ELF. Copy the whole folder.
 
   Ubuntu 22.04+ / Debian 12+:
     packaging/scripts/package-linux-portable.sh <bindir> dist
-    -> dist/wkhtmltopdf-ng_0.13.1_linux-amd64.tar.xz
+    -> dist/wkhtmltopdf-ng_0.13.2_linux-amd64.tar.xz
     Needs host glibc 2.35+ (Ubuntu 22.04 or newer).
 
   Rocky / Alma / CentOS Stream 9:
     packaging/scripts/package-el9.sh dist
-    -> dist/wkhtmltopdf-ng_0.13.1_el9-amd64.tar.xz
+    -> dist/wkhtmltopdf-ng_0.13.2_el9-amd64.tar.xz
     Needs host glibc 2.34+ (EL9). Do not run this tree on Ubuntu.
 
   Windows 10/11:
@@ -218,7 +218,7 @@ This is NOT a single static ELF. Copy the whole folder.
 
 On the target:
 
-  tar -xJf wkhtmltopdf-ng_0.13.1_linux-amd64.tar.xz
+  tar -xJf wkhtmltopdf-ng_0.13.2_linux-amd64.tar.xz
   cd wkhtmltopdf-ng
   ./bin/wkhtmltopdf --version
   ./bin/wkhtmltopdf --enable-local-file-access in.html out.pdf

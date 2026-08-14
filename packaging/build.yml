@@ -1,4 +1,4 @@
-version: 0.13.1
+version: 0.13.2
 image_prefix: wkhtmltopdf-ng
 
 # The first supported package matrix uses distributions that ship Qt 6
