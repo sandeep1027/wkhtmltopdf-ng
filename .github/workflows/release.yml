@@ -41,10 +41,13 @@ jobs:
           sudo apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
             qt6-base-dev qt6-webengine-dev qt6-webengine-dev-tools \
-            libqt6webenginecore6-bin qpdf cmake ninja-build g++
+            libqt6webenginecore6-bin libgl1-mesa-dev libxkbcommon-dev \
+            qpdf cmake ninja-build g++ xz-utils
       - name: Build
         run: |
-          cmake -S . -B /tmp/wkhtmltopdf-ng-build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake -S . -B /tmp/wkhtmltopdf-ng-build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH=/usr/lib/x86_64-linux-gnu/cmake
           cmake --build /tmp/wkhtmltopdf-ng-build --parallel
           mkdir -p /tmp/wkhtmltopdf-ng-bin
           cp /tmp/wkhtmltopdf-ng-build/wkhtmltopdf-ng \

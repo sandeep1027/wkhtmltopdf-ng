@@ -1,7 +1,11 @@
-wkhtmltopdf-ng 0.13.0
+wkhtmltopdf-ng 0.13.1
 
 Qt 6 WebEngine (Chromium) HTML-to-PDF and HTML-to-image converter.
 Replacement for archived wkhtmltopdf 0.12.x (Qt WebKit).
+
+Smaller portable archives than 0.13.0: English locales only, no DevTools
+pack, stripped binaries, xz compression. Chromium is still ~160 MB, so
+the archive cannot be a few megabytes.
 
 Download the archive that matches the machine you will run on.
 Unpack the folder and run bin/wkhtmltopdf — do not copy only the binary.
@@ -15,7 +19,7 @@ Assets
 CentOS / RHEL 7 is not supported. Use Docker (packaging/run-docker.sh).
 
 Quick test
-  tar -xJf wkhtmltopdf-ng_0.13.0_linux-amd64.tar.xz
+  tar -xJf wkhtmltopdf-ng_0.13.1_linux-amd64.tar.xz
   cd wkhtmltopdf-ng
   export QT_QPA_PLATFORM=offscreen
   export QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox

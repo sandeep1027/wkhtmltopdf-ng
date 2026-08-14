@@ -9,7 +9,7 @@
 #include <QIODevice>
 
 namespace {
-constexpr const char* version = "0.13.0";
+constexpr const char* version = "0.13.1";
 }
 
 int processArguments(QApplication& application, const QStringList& args)

@@ -39,7 +39,7 @@ int main(int argc, char* argv[])
     parser.process(cliArgs);
 
     if (parser.isSet(QStringLiteral("version"))) {
-        QTextStream(stdout) << "wkhtmltoimage-ng 0.13.0 (Qt WebEngine / Chromium)\n";
+        QTextStream(stdout) << "wkhtmltoimage-ng 0.13.1 (Qt WebEngine / Chromium)\n";
         return 0;
     }
 
