@@ -1,0 +1,310 @@
+wkhtmltopdf-ng 0.13.0
+=====================
+
+Qt 6 WebEngine (Chromium) HTML-to-PDF and HTML-to-image converter.
+Drop-in-ish replacement for archived wkhtmltopdf 0.12.x (Qt WebKit).
+
+License: GNU LGPL v3 (see LICENSE).
+Repository: https://github.com/sandeep1027/wkhtmltopdf-ng
+
+
+1. Programs
+-----------
+
+  wkhtmltopdf-ng     HTML / URL / stdin  ->  PDF
+  wkhtmltoimage-ng   HTML / URL          ->  PNG, JPEG, WebP
+  libwkhtmltox       C API (wkhtmltopdf_* and wkhtmltoimage_*)
+
+Portable trees also ship compatibility names:
+
+  bin/wkhtmltopdf
+  bin/wkhtmltoimage
+
+
+2. Quick test
+-------------
+
+  export QT_QPA_PLATFORM=offscreen
+  export QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox
+
+  wkhtmltopdf-ng --version
+  wkhtmltopdf-ng --enable-local-file-access sample.html out.pdf
+  wkhtmltoimage-ng --enable-local-file-access sample.html out.png
+
+  wkhtmltopdf-ng --help
+  wkhtmltoimage-ng --help
+
+
+3. Usage (PDF)
+--------------
+
+  wkhtmltopdf-ng [GLOBAL OPTIONS] [OBJECT]... <output.pdf | ->
+
+Document objects:
+
+  [page] <url|file|-> [PAGE OPTIONS]
+  cover  <url|file|-> [PAGE OPTIONS]
+  toc    [TOC OPTIONS]
+
+Options before the first object are defaults. Options after an object
+apply only to that object. "cover" has no header/footer and is omitted
+from the outline.
+
+Examples:
+
+  wkhtmltopdf-ng https://example.com out.pdf
+  wkhtmltopdf-ng --page-size A4 --margin-top 20mm input.html out.pdf
+  wkhtmltopdf-ng --enable-local-file-access \
+      --header-left "Report" --header-right "[page]/[topage]" \
+      --footer-center "Page [page] of [topage]" \
+      input.html out.pdf
+  wkhtmltopdf-ng --enable-local-file-access \
+      --header-html header.html --footer-html footer.html \
+      input.html out.pdf
+  wkhtmltopdf-ng cover cover.html toc page chapter.html book.pdf
+  cat input.html | wkhtmltopdf-ng --enable-local-file-access - out.pdf
+  wkhtmltopdf-ng https://example.com - > out.pdf
+
+
+4. Common flags
+---------------
+
+Page / layout
+  --page-size SIZE              A4, Letter, Legal, ...
+  --orientation Portrait|Landscape
+  --margin-top/right/bottom/left LENGTH
+  --dpi DPI                     layout scale = (96/DPI) * zoom  (default 96)
+  --zoom FACTOR
+  --enable-smart-shrinking      shrink content wider than the page (default)
+  --disable-smart-shrinking
+  --viewport-size WxH
+  --minimum-font-size PX
+  --page-ranges 1-3,5           Qt 6.8+ only
+  --copies N
+
+Render / wait
+  --javascript-delay MS         default 200
+  --window-status VALUE         wait until window.status matches
+  --run-script SCRIPT
+  --disable-javascript / --enable-javascript
+  --stop-slow-scripts           default; cap long waits
+  --no-stop-slow-scripts
+  --print-media-type            default
+  --no-print-media-type
+  --background / --no-background
+  --encoding ENC                local HTML charset (default utf-8)
+  --enable-local-file-access    required for local images, CSS, fonts
+  --load-error-handling abort|ignore|skip
+  --load-media-error-handling abort|ignore|skip
+  --retry N
+  --timeout MS
+
+Images in the page
+  --image-dpi DPI               cap in-page image DPI (default 600)
+  --image-quality N             JPEG quality when resampling (default 94)
+  --lowquality, -l              150 DPI images, quality 40
+
+PDF extras (need qpdf in PATH or bin/qpdf)
+  --compress / --compress-level 1-9
+  --optimize-images
+  --no-pdf-compression
+  --linearize
+  --author / --subject / --keywords TEXT
+  --user-password / --owner-password PASS
+  --watermark TEXT
+  --dump-outline FILE
+
+Headers and footers
+  --header-left/center/right TEXT
+  --footer-left/center/right TEXT
+  --header-html / --footer-html FILE
+  --header-on all|odd|even
+  --footer-on all|odd|even
+  --no-header-on-first
+  --default-header
+
+  Tokens: [page] [topage] [frompage] [webpage] [section]
+          [date] [isodate] [time] [title] [doctitle]
+
+Network
+  --proxy URL
+  --proxy-auth USER:PASSWORD
+  --username / --password
+  --cookie NAME VALUE
+  --cookie-jar FILE
+  --custom-header NAME:VALUE
+  --allow PATH
+  --cache-dir PATH
+  --ssl-crt-path / --ssl-key-path / --ca-certificate FILE
+
+Links / JS / forms
+  --keep-relative-links
+  --disable-external-links / --disable-internal-links
+  --disable-forms
+  --no-images
+  --debug-javascript
+
+TOC
+  toc   or   --toc
+  --toc-caption-text TEXT
+  --toc-header-text TEXT
+  --toc-xsl FILE
+  --dump-default-toc-xsl
+
+Other
+  --quiet
+  --log-level none|error|warn|info
+  --version
+  --help
+
+wkhtmltoimage-ng extras: --width, --height, --quality, --fmt,
+--crop-x/--crop-y/--crop-width/--crop-height, --transparent.
+
+
+5. Build from source
+--------------------
+
+Requirements:
+  Qt 6.2+ with WebEngine (6.8+ for --page-ranges)
+  qpdf
+  CMake 3.16+
+  C++17 compiler
+  ninja (optional)
+
+Debian 13:
+
+  sudo apt install qt6-base-dev qt6-webengine-dev qt6-webengine-dev-tools \
+    libqt6webenginecore6-bin qpdf cmake ninja-build
+
+  cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+  cmake --build build
+  ctest --test-dir build --output-on-failure
+
+Ubuntu 22.04 ships Qt 6.2.4. That build works; page-range printing is
+compiled out unless Qt is 6.8+.
+
+
+6. Portable tree (test on another machine)
+------------------------------------------
+
+This is NOT a single static ELF. Copy the whole folder.
+
+  Ubuntu 22.04+ / Debian 12+:
+    packaging/scripts/package-linux-portable.sh <bindir> dist
+    -> dist/wkhtmltopdf-ng_0.13.0_linux-amd64.tar.gz
+    Needs host glibc 2.35+ (Ubuntu 22.04 or newer).
+
+  Rocky / Alma / CentOS Stream 9:
+    packaging/scripts/package-el9.sh dist
+    -> dist/wkhtmltopdf-ng_0.13.0_el9-amd64.tar.gz
+    Needs host glibc 2.34+ (EL9). Do not run this tree on Ubuntu.
+
+  Windows 10/11:
+    packaging/scripts/package-windows.ps1
+    or GitHub Actions artifact windows-amd64.zip
+    Cannot be produced on Linux.
+
+On the target:
+
+  tar -xzf wkhtmltopdf-ng_0.13.0_linux-amd64.tar.gz
+  cd wkhtmltopdf-ng
+  ./bin/wkhtmltopdf --version
+  ./bin/wkhtmltopdf --enable-local-file-access in.html out.pdf
+
+If there is no display:
+
+  export QT_QPA_PLATFORM=offscreen
+  export QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox
+
+Do not copy only bin/wkhtmltopdf. The wrapper needs lib/, libexec/,
+plugins/, and resources/ (including v8_context_snapshot.bin on Qt 6.6+).
+
+
+7. What will NOT run
+--------------------
+
+  CentOS / RHEL 7          glibc 2.17. Qt 6 WebEngine will not start.
+  CentOS / RHEL 8          not supported by this Qt 6 stack.
+  "Patch latest glibc"     replacing system glibc can break the OS.
+  patchelf + extra glibc   loader may start; Chromium still needs a
+                           modern kernel (not 3.10) and userspace.
+
+Use Docker on CentOS 7:
+
+  packaging/run-docker.sh --build
+  packaging/run-docker.sh --enable-local-file-access in.html out.pdf
+
+
+8. How this differs from original wkhtmltopdf
+---------------------------------------------
+
+Original 0.12.x used a patched Qt 4.8.7 WebKit and wrote PDF itself
+(QPdfEngine). It did not use qpdf.
+
+wkhtmltopdf-ng uses Chromium printToPdf, then qpdf for:
+  page-number overlays, copies, outlines, ranges, encryption,
+  linearize, compress, keep-relative-links rewrite.
+
+Approximated, not identical:
+  --dpi                 CSS zoom scale 96/dpi
+  smart shrinking       post-layout shrink-to-fit
+  --image-dpi/quality   downsample in-page images in JS before print
+  headers/footers       HTML overlay via qpdf, not native WebKit bands
+  --page-ranges         Qt 6.8 QPageRanges
+
+Not available:
+  native AcroForms (--produce-forms is accepted, not a live PDF form)
+  PDF/A
+  true one-file static binary
+  patched-WebKit print extras that Chromium does not expose
+
+
+9. C API
+--------
+
+Header:  wkhtmltox/wkhtmltox.h
+Library: libwkhtmltox.so (libwkhtmltox.dll on Windows)
+
+PDF:   wkhtmltopdf_init, _create_global_settings, _create_object_settings,
+       _add_object, _convert, _get_output, six-phase progress
+Image: wkhtmltoimage_*  (in, out, fmt, screenWidth, quality, crop.*, ...)
+
+The library creates a QApplication if the host has not.
+See tests/test_capi.c.
+
+
+10. Tests
+---------
+
+  ctest --test-dir build --output-on-failure
+
+Shell checks in tests/:
+  regression.sh, cli_flags.sh, links.sh, header_footer.sh,
+  pagination.sh, bank_statement.sh, js_font.sh, js_images.sh,
+  heavy_cdn.sh
+
+Fixtures: tests/test_data/
+Typical rendered PDFs (local, not in git): /tmp/wkhtmltopdf-ng-pdfs/
+
+
+11. Fonts and JavaScript
+------------------------
+
+Local @font-face and embedded fonts work with --enable-local-file-access.
+Google Fonts / Chart.js CDNs work if the machine has network; fixtures
+fall back (CDN-FONT-FALLBACK / CDN-CHART-SKIP) when offline.
+
+Wait for JS with --javascript-delay and/or --window-status.
+Default delay is 200 ms. Heavy pages: 200-400 ms plus window.status.
+
+
+12. Source layout
+-----------------
+
+  src/main.cpp, src/image/main.cpp
+  src/converter/     HTML->PDF/image, headers, TOC, qpdf post
+  src/utils/         flags, files, headless Qt, JS helpers
+  src/capi/          libwkhtmltox
+  tests/             CTest + fixtures
+  packaging/         Debian, Docker, portable Linux/Windows/macOS
+  docs/DOC.txt       this file

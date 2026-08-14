@@ -1,123 +1,95 @@
 # wkhtmltopdf-ng
 
-`wkhtmltopdf-ng` is a Qt WebEngine based HTML-to-PDF command-line converter.
-It uses Chromium through Qt WebEngine instead of the archived Qt WebKit engine
-used by upstream wkhtmltopdf.
+HTML to PDF and HTML to image CLI, built on **Qt 6 WebEngine** (Chromium).
+It is a modern replacement for archived [wkhtmltopdf](https://wkhtmltopdf.org/)
+(Qt WebKit).
 
-## Status
+Version **0.13.0**. License: LGPL-3.0.
 
-Phase 1 currently provides:
+Full flag list, packaging, limits, and tests: [`docs/DOC.txt`](docs/DOC.txt).
 
-- URL, local-file, and stdin HTML input
-- PDF file and stdout output
-- Modern JavaScript and CSS through Qt WebEngine
-- Page size, orientation, margins, title, zoom, and JavaScript delay (default 200 ms)
-- Layout `--dpi` (scales content by `96/dpi`, combined with `--zoom`)
-- Smart shrinking: shrink content that is wider than the printable page
-- `--viewport-size`, `--minimum-font-size`, `--background` / `--no-background`
-- `--load-error-handling` abort/ignore/skip, `--copies`, `--no-pdf-compression`
-- `--image-dpi`, `--image-quality`, and `--lowquality` (downsample page images before print)
-- Document objects: `page`, `cover`, and `toc`, with per-object page options
-- `--cookie`, `--allow`, `--cache-dir`, SOCKS/bypass proxy, repeatable `--post`
-- Header tokens including `[frompage]`, `[section]`, `[isodate]`, `[doctitle]`
-- Nested `--dump-outline` XML, TOC back-links, `--toc-xsl` via `xsltproc`
-- `wkhtmltoimage-ng` shares `HtmlToImageConverter` with the C API
-- Local-file access control and custom request headers
-- Static CSS-based text and HTML headers/footers
-- Generated heading table of contents with links and dotted leaders
-- Heading outline XML export with `--dump-outline`
-- Accurate `[page]` and `[topage]` overlays using the rendered PDF page count
-- `--page-ranges` via Qt 6.8 `printToPdf` (`1-3,5`)
-- Multiple input documents combined with page breaks
-- Relative document resources normalized per input during multi-document conversion
-- `wkhtmltoimage-ng` PNG, JPEG, and WebP screenshots
-- HTTP/HTTPS proxy and proxy authentication
-- A source-compatible `libwkhtmltox` C API with the PDF (`wkhtmltopdf_*`) and
-  image (`wkhtmltoimage_*`) symbol surface, including multi-phase progress and
-  error callbacks
+## What you get
 
-The Qt WebEngine print API does not expose all of wkhtmltopdf's patched WebKit
-features. In particular, PDF bookmark embedding and resource types outside the
-common URL-bearing attributes and CSS URL cases still need work.
-They are not silently presented as complete compatibility.
+- `wkhtmltopdf-ng` — HTML/URL/stdin → PDF
+- `wkhtmltoimage-ng` — HTML/URL → PNG, JPEG, WebP
+- `libwkhtmltox` — C API with 0.12-style `wkhtmltopdf_*` / `wkhtmltoimage_*` names
+- Compatibility names `wkhtmltopdf` and `wkhtmltoimage` in portable trees
 
-## Build
+Modern CSS and JavaScript work (flex, grid, `@media print`, canvas, webfonts).
+Page numbers, copies, outlines, and compression use bundled **qpdf**.
 
-Qt **6.8 LTS** or newer with WebEngine development files, the WebEngine process
-runtime, `qpdf`, CMake, and a C++17 compiler are required. Page-range printing
-uses the Qt 6.8 `QWebEnginePage::printToPdf` API.
+## Quick start
 
-On Debian 13 (Qt 6.8 LTS), the relevant packages are:
+```sh
+wkhtmltopdf-ng https://example.com out.pdf
+wkhtmltopdf-ng --enable-local-file-access --page-size A4 input.html out.pdf
+wkhtmltopdf-ng --header-right "[page]/[topage]" --footer-center "Page [page]" \
+  --enable-local-file-access input.html out.pdf
+wkhtmltoimage-ng --width 1200 input.html shot.png
+```
+
+Headless / no display:
+
+```sh
+export QT_QPA_PLATFORM=offscreen
+export QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox
+```
+
+`--help` prints the full option list.
+
+## Build from source
+
+Needs Qt **6.2+** with WebEngine (page ranges need **6.8+**), `qpdf`, CMake, C++17.
+
+Debian 13:
 
 ```sh
 sudo apt install qt6-base-dev qt6-webengine-dev qt6-webengine-dev-tools \
   libqt6webenginecore6-bin qpdf cmake ninja-build
-```
-
-```sh
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ctest --test-dir build --output-on-failure
 ```
 
-## Usage
+## Portable builds (copy to another machine)
+
+Qt WebEngine cannot be one static file. Unpack the folder and run `bin/wkhtmltopdf`.
+
+| Other machine | Archive / how |
+|---|---|
+| Ubuntu 22.04+ / Debian 12+ | `packaging/scripts/package-linux-portable.sh` → `*_linux-amd64.tar.gz` |
+| Rocky / Alma / CentOS Stream **9** | `packaging/scripts/package-el9.sh dist` → `*_el9-amd64.tar.gz` |
+| Windows 10/11 | `packaging/scripts/package-windows.ps1` or the Actions `windows-amd64` zip |
+| CentOS / RHEL **7** | Not supported (glibc 2.17). Use Docker. |
 
 ```sh
-wkhtmltopdf-ng https://example.com example.pdf
-wkhtmltopdf-ng --page-size A4 --margin-top 20mm --page-ranges 1-2 input.html output.pdf
-wkhtmltopdf-ng --enable-local-file-access --margin-top 22mm --margin-bottom 22mm \
-  --header-html tests/test_data/pagination-header.html \
-  --footer-html tests/test_data/pagination-footer.html \
-  tests/test_data/pagination.html pagination.pdf
-wkhtmltopdf-ng --enable-local-file-access \
-  --header-left "Report" --header-right "[page]/[topage]" \
-  --footer-center "Page [page] of [topage]" \
-  tests/test_data/pagination.html pagination-tokens.pdf
-cat input.html | wkhtmltopdf-ng --enable-local-file-access - output.pdf
-wkhtmltopdf-ng https://example.com - > example.pdf
-wkhtmltoimage-ng https://example.com screenshot.png
-wkhtmltoimage-ng --width 1200 --quality 85 --crop-width 800 input.html crop.png
+tar -xzf wkhtmltopdf-ng_0.13.0_linux-amd64.tar.gz   # or the el9 file
+./wkhtmltopdf-ng/bin/wkhtmltopdf --version
+./wkhtmltopdf-ng/bin/wkhtmltopdf --enable-local-file-access in.html out.pdf
 ```
 
-On Linux servers without a display, use the Qt platform plugin supported by
-the deployment environment, commonly `QT_QPA_PLATFORM=offscreen`.
-
-Standalone CLI trees (Windows zip, Linux tarball, Rocky/CentOS 9 image) are
-documented in `packaging/README.md`. Qt WebEngine cannot ship as one static
-file; the portable archive is a folder you copy and run from `bin/`.
-
-CentOS 7 cannot run the native binary. Use Docker:
+CentOS 7 via Docker:
 
 ```sh
 packaging/run-docker.sh --build
 packaging/run-docker.sh --enable-local-file-access in.html out.pdf
 ```
 
-Rocky / Alma / CentOS Stream 9 portable tarball:
+See [`packaging/README.md`](packaging/README.md).
 
-```sh
-packaging/scripts/package-el9.sh dist
-# writes dist/wkhtmltopdf-ng_*_el9-amd64.tar.gz
+## Limits vs original wkhtmltopdf
+
+- Not a true static one-file binary
+- No native AcroForms or PDF/A
+- Headers/footers and `[page]`/`[topage]` are a **qpdf overlay**, not patched WebKit bands
+- `--page-ranges` needs Qt 6.8+
+- Will not run on CentOS 7 even if you swap glibc or use patchelf
+
+## Repository
+
 ```
-
-## C API
-
-The installed header is `wkhtmltox/wkhtmltox.h` and the shared library is
-`libwkhtmltox`. The exported PDF API names and callback signatures follow
-wkhtmltopdf 0.12.x. Both converter families are exported:
-
-- `wkhtmltopdf_*` - PDF conversion with `wkhtmltopdf_add_object`,
-  `wkhtmltopdf_convert`, `wkhtmltopdf_get_output`, and the standard six-phase
-  progress model ("Loading pages" ... "Done").
-- `wkhtmltoimage_*` - image conversion driven by `wkhtmltoimage_set_global_setting`
-  (`in`, `out`, `fmt`, `screenWidth`, `screenHeight`, `quality`, `crop.*`,
-  `transparent`, `enableJavascript`, `javascriptDelay`, `enableLocalFileAccess`)
-  and the three-phase progress model ("Loading page", "Rendering page", "Done").
-
-The library creates its own `QApplication` when the host process has not done
-so, so in-process consumers (e.g. Python/Ruby bindings) do not need to
-construct a Qt application. ABI compatibility must still be validated against
-each consumer and platform before replacing an existing binary. The CTest suite
-includes a `wkhtmltox-capi-symbols` check for symbol presence and phase
-descriptions, plus a render check (`wkhtmltox-capi-convert`) when the
-WebEngine runtime is available.
+src/           CLI, converter, C API
+tests/         fixtures and shell checks
+packaging/     Debian, Docker, Linux/Windows/macOS portable
+docs/DOC.txt   full documentation
+```
