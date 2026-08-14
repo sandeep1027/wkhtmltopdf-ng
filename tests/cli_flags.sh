@@ -36,6 +36,8 @@ expect_fail "invalid header-on" --header-on both in.html out.pdf
 expect_fail "invalid footer-on" --footer-on left in.html out.pdf
 expect_fail "negative retry" --retry -1 in.html out.pdf
 expect_fail "negative timeout" --timeout -5 in.html out.pdf
+expect_fail "insert without after-page" --insert-pdf extra.pdf orig.pdf out.pdf
+expect_fail "after-page negative" --insert-pdf extra.pdf --after-page -1 orig.pdf out.pdf
 
 if "$bin" --dump-default-toc-xsl | grep -q "xsl:stylesheet"; then
     echo "PASS: dump-default-toc-xsl"

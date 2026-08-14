@@ -19,6 +19,13 @@ enum class ObjectKind {
     Toc
 };
 
+enum class PdfEditMode {
+    None,
+    Merge,
+    Split,
+    Insert
+};
+
 class GlobalSettings {
 public:
     QString out;                    // --output
@@ -66,6 +73,10 @@ public:
     QString sslKeyPath;             // --ssl-key-path
     QString sslKeyPassword;         // --ssl-key-password
     QString caCertificate;          // --ca-certificate
+    PdfEditMode pdfEdit = PdfEditMode::None; // --merge-pdf / --split-pdf / --insert-pdf
+    QString insertPdf;              // --insert-pdf FILE
+    int afterPage = -1;             // --after-page N  (0 = before first page)
+    bool splitPages = false;        // --split-pages (one file per page)
 
     // For C API reflection
     QString get(const char* name) const;

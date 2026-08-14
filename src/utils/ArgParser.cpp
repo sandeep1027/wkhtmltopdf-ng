@@ -44,7 +44,10 @@ bool needsValue(const QString& option)
             option == QStringLiteral("--retry") || option == QStringLiteral("--timeout") ||
             option == QStringLiteral("--ssl-crt-path") || option == QStringLiteral("--ssl-key-path") ||
             option == QStringLiteral("--ssl-key-password") || option == QStringLiteral("--ca-certificate") ||
-            option == QStringLiteral("--replace");
+            option == QStringLiteral("--replace") ||
+            option == QStringLiteral("--insert-pdf") ||
+            option == QStringLiteral("--after-page") ||
+            option == QStringLiteral("--before-page");
 }
 
 bool isGlobalOnly(const QString& option)
@@ -78,7 +81,10 @@ bool isGlobalOnly(const QString& option)
            option == QStringLiteral("--header-on") || option == QStringLiteral("--footer-on") ||
            option == QStringLiteral("--retry") || option == QStringLiteral("--timeout") ||
            option == QStringLiteral("--ssl-crt-path") || option == QStringLiteral("--ssl-key-path") ||
-           option == QStringLiteral("--ssl-key-password") || option == QStringLiteral("--ca-certificate");
+           option == QStringLiteral("--ssl-key-password") || option == QStringLiteral("--ca-certificate") ||
+           option == QStringLiteral("--merge-pdf") || option == QStringLiteral("--split-pdf") ||
+           option == QStringLiteral("--split-pages") || option == QStringLiteral("--insert-pdf") ||
+           option == QStringLiteral("--after-page") || option == QStringLiteral("--before-page");
 }
 
 bool takeValue(const QStringList& args, int* index, QString* value, QString* error)
@@ -228,6 +234,19 @@ bool applyFlag(const QString& argument, GlobalSettings* global, ObjectSettings* 
         global->skipHeaderOnFirst = true;
         return true;
     }
+    if (argument == QStringLiteral("--merge-pdf")) {
+        global->pdfEdit = PdfEditMode::Merge;
+        return true;
+    }
+    if (argument == QStringLiteral("--split-pdf")) {
+        global->pdfEdit = PdfEditMode::Split;
+        return true;
+    }
+    if (argument == QStringLiteral("--split-pages")) {
+        global->splitPages = true;
+        if (global->pdfEdit == PdfEditMode::None) global->pdfEdit = PdfEditMode::Split;
+        return true;
+    }
     if (argument == QStringLiteral("--produce-forms")) { object->produceForms = true; return true; }
     if (argument == QStringLiteral("--no-produce-forms")) { object->produceForms = false; return true; }
     return false;
@@ -310,6 +329,19 @@ bool applyValue(const QString& argument, const QString& value, GlobalSettings* g
     else if (argument == QStringLiteral("--ssl-key-path")) global->sslKeyPath = value;
     else if (argument == QStringLiteral("--ssl-key-password")) global->sslKeyPassword = value;
     else if (argument == QStringLiteral("--ca-certificate")) global->caCertificate = value;
+    else if (argument == QStringLiteral("--insert-pdf")) {
+        global->insertPdf = value;
+        global->pdfEdit = PdfEditMode::Insert;
+    } else if (argument == QStringLiteral("--after-page")) {
+        bool parsed = false;
+        global->afterPage = value.toInt(&parsed);
+        *ok = parsed && global->afterPage >= 0;
+    } else if (argument == QStringLiteral("--before-page")) {
+        bool parsed = false;
+        const int page = value.toInt(&parsed);
+        *ok = parsed && page >= 1;
+        if (*ok) global->afterPage = page - 1;
+    }
     else if (argument == QStringLiteral("--post")) object->postData = value;
     else if (argument == QStringLiteral("--post-file")) object->postFile = value;
     else if (argument == QStringLiteral("--allow")) {
@@ -538,6 +570,13 @@ ParsedArguments ArgParser::parse(const QStringList& arguments)
             result.error = QStringLiteral("expected one or more INPUT arguments followed by OUTPUT");
             return result;
         }
+        if (result.global.pdfEdit != PdfEditMode::None) {
+            if (result.inputs.isEmpty()) {
+                result.error = QStringLiteral("expected one or more INPUT PDFs followed by OUTPUT");
+                return result;
+            }
+            return result;
+        }
         bool hasRenderable = false;
         for (const ObjectSettings& object : result.objects) {
             if (object.kind != ObjectKind::Toc || object.toc) hasRenderable = true;
@@ -643,6 +682,18 @@ QString ArgParser::usage()
         "  --debug-javascript           Print page console messages\n"
         "  --bypass-proxy-for HOST      Do not use the proxy for HOST\n"
         "  --custom-header-propagation  Send custom headers on every request (default)\n\n"
+        "PDF split / merge / insert (qpdf; no HTML render):\n"
+        "  --merge-pdf A.pdf B.pdf [C.pdf ...] out.pdf\n"
+        "                                Concatenate PDFs in order\n"
+        "  --split-pdf in.pdf --page-ranges 1-2 part.pdf\n"
+        "                                Extract those pages to one PDF\n"
+        "  --split-pdf --split-pages in.pdf out.pdf\n"
+        "                                Write out-1.pdf, out-2.pdf, ...\n"
+        "  --insert-pdf extra.pdf --after-page 3 original.pdf out.pdf\n"
+        "                                Pages 1-3 of original, then extra, then the rest\n"
+        "  --insert-pdf extra.pdf --before-page 4 original.pdf out.pdf\n"
+        "                                Same as --after-page 3\n"
+        "  --after-page 0                Insert extra before the first page\n\n"
         "Other options:\n"
         "  --quiet                       Suppress informational output\n"
         "  --version                     Print version\n"

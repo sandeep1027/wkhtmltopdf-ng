@@ -152,6 +152,18 @@ TOC
   --dump-default-toc-xsl
 
 Other
+PDF split / merge / insert (existing PDFs, qpdf; no HTML render)
+  --merge-pdf A.pdf B.pdf [C.pdf ...] out.pdf
+  --split-pdf in.pdf --page-ranges 1-2 part.pdf
+  --split-pdf --split-pages in.pdf out.pdf
+      writes out-1.pdf, out-2.pdf, ...
+  --insert-pdf extra.pdf --after-page 3 original.pdf out.pdf
+      4-page original + extra after page 3 → pages 1,2,3, extra..., 4
+  --insert-pdf extra.pdf --before-page 4 original.pdf out.pdf
+      same as --after-page 3
+  --after-page 0
+      insert extra at the start
+
   --quiet
   --log-level none|error|warn|info
   --version

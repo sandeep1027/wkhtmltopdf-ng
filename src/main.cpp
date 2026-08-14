@@ -1,4 +1,5 @@
 #include "converter/HtmlToPdfConverter.h"
+#include "converter/PdfPostProcessor.h"
 #include "converter/TocGenerator.h"
 #include "utils/ArgParser.h"
 #include "utils/HeadlessQt.h"
@@ -32,6 +33,17 @@ int processArguments(QApplication& application, const QStringList& args)
         QTextStream(stderr) << "wkhtmltopdf-ng: " << arguments.error << "\n\n"
                             << ArgParser::usage();
         return 2;
+    }
+
+    if (arguments.global.pdfEdit != PdfEditMode::None) {
+        QString editError;
+        if (!runPdfEdit(arguments.global, arguments.inputs, arguments.output, &editError)) {
+            if (!arguments.global.quiet) {
+                QTextStream(stderr) << "wkhtmltopdf-ng: " << editError << '\n';
+            }
+            return 1;
+        }
+        return 0;
     }
 
     HtmlToPdfConverter converter(arguments.global);

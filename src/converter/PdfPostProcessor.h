@@ -41,6 +41,11 @@ int countPdfPages(const QString& path);
 bool mergePdfFiles(const QStringList& inputPaths, const QString& outputPath, QString* error = nullptr);
 bool applyPdfPageRanges(const QString& inputPath, const QString& outputPath,
                         const QString& ranges, QString* error = nullptr);
+bool splitPdfPages(const QString& inputPath, const QString& outputPath, QString* error = nullptr);
+bool insertPdfAfterPage(const QString& originalPath, const QString& insertPath,
+                        int afterPage, const QString& outputPath, QString* error = nullptr);
+bool runPdfEdit(const GlobalSettings& global, const QStringList& inputs,
+                const QString& output, QString* error = nullptr);
 bool applyPdfDocumentExtras(const QString& inputPath, const QString& outputPath,
                             const GlobalSettings& global, QString* error = nullptr);
 bool pdfNeedsDocumentExtras(const GlobalSettings& global);

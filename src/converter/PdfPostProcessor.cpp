@@ -623,6 +623,90 @@ bool applyPdfPageRanges(const QString& inputPath, const QString& outputPath,
                     parsed.toString(), QStringLiteral("--"), outputPath}, nullptr, error);
 }
 
+bool splitPdfPages(const QString& inputPath, const QString& outputPath, QString* error)
+{
+    if (!QFileInfo::exists(inputPath)) {
+        if (error) *error = QStringLiteral("PDF not found: %1").arg(inputPath);
+        return false;
+    }
+    const QFileInfo info(outputPath);
+    QDir().mkpath(info.path().isEmpty() ? QStringLiteral(".") : info.path());
+    return runQpdf({QStringLiteral("--split-pages"), inputPath, outputPath}, nullptr, error);
+}
+
+bool insertPdfAfterPage(const QString& originalPath, const QString& insertPath,
+                        int afterPage, const QString& outputPath, QString* error)
+{
+    if (!QFileInfo::exists(originalPath)) {
+        if (error) *error = QStringLiteral("PDF not found: %1").arg(originalPath);
+        return false;
+    }
+    if (!QFileInfo::exists(insertPath)) {
+        if (error) *error = QStringLiteral("PDF not found: %1").arg(insertPath);
+        return false;
+    }
+    const int pages = countPdfPages(originalPath);
+    if (pages < 1) {
+        if (error) *error = QStringLiteral("could not read page count from %1").arg(originalPath);
+        return false;
+    }
+    if (afterPage < 0 || afterPage > pages) {
+        if (error) {
+            *error = QStringLiteral("after-page %1 is out of range (0-%2)")
+                         .arg(afterPage).arg(pages);
+        }
+        return false;
+    }
+
+    QStringList arguments{QStringLiteral("--empty"), QStringLiteral("--pages")};
+    if (afterPage >= 1)
+        arguments << originalPath << QStringLiteral("1-%1").arg(afterPage);
+    arguments << insertPath << QStringLiteral("1-z");
+    if (afterPage < pages)
+        arguments << originalPath << QStringLiteral("%1-z").arg(afterPage + 1);
+    arguments << QStringLiteral("--") << outputPath;
+    return runQpdf(arguments, nullptr, error);
+}
+
+bool runPdfEdit(const GlobalSettings& global, const QStringList& inputs,
+                const QString& output, QString* error)
+{
+    switch (global.pdfEdit) {
+    case PdfEditMode::Merge:
+        if (inputs.size() < 2) {
+            if (error) *error = QStringLiteral("merge needs two or more input PDFs and an output");
+            return false;
+        }
+        return mergePdfFiles(inputs, output, error);
+    case PdfEditMode::Split:
+        if (inputs.size() != 1) {
+            if (error) *error = QStringLiteral("split needs one input PDF and an output");
+            return false;
+        }
+        if (!global.pageRanges.isEmpty())
+            return applyPdfPageRanges(inputs.first(), output, global.pageRanges, error);
+        return splitPdfPages(inputs.first(), output, error);
+    case PdfEditMode::Insert:
+        if (inputs.size() != 1) {
+            if (error) *error = QStringLiteral("insert needs ORIGINAL.pdf OUTPUT.pdf");
+            return false;
+        }
+        if (global.insertPdf.isEmpty()) {
+            if (error) *error = QStringLiteral("--insert-pdf requires a PDF path");
+            return false;
+        }
+        if (global.afterPage < 0) {
+            if (error) *error = QStringLiteral("insert requires --after-page N or --before-page N");
+            return false;
+        }
+        return insertPdfAfterPage(inputs.first(), global.insertPdf, global.afterPage, output, error);
+    case PdfEditMode::None:
+        break;
+    }
+    if (error) *error = QStringLiteral("not a PDF edit command");
+    return false;
+}
+
 bool pdfNeedsImageOptimization(const GlobalSettings& global)
 {
     return global.lowquality || global.imageDpi != 600 || global.imageQuality != 94;

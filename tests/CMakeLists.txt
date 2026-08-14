@@ -268,14 +268,20 @@ if(EXISTS "/usr/lib/qt6/libexec/QtWebEngineProcess")
                 $<TARGET_FILE:wkhtmltopdf-ng>
                 ${CMAKE_CURRENT_SOURCE_DIR}/test_data
                 ${CMAKE_CURRENT_BINARY_DIR}/pagination-check)
+        add_test(NAME wkhtmltopdf-ng-pdf-edit-check
+            COMMAND /bin/bash ${CMAKE_CURRENT_SOURCE_DIR}/pdf_edit.sh
+                $<TARGET_FILE:wkhtmltopdf-ng>
+                ${CMAKE_CURRENT_SOURCE_DIR}/test_data
+                ${CMAKE_CURRENT_BINARY_DIR}/pdf-edit-check)
         set_tests_properties(wkhtmltopdf-ng-native-outline wkhtmltopdf-ng-page-counters
             wkhtmltopdf-ng-html-header wkhtmltopdf-ng-header-footer-10pages
             wkhtmltopdf-ng-header-footer-check wkhtmltopdf-ng-pagination
-            wkhtmltopdf-ng-pagination-check
+            wkhtmltopdf-ng-pagination-check wkhtmltopdf-ng-pdf-edit-check
             PROPERTIES
                 ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox"
                 TIMEOUT 60)
         set_tests_properties(wkhtmltopdf-ng-header-footer-check
-            wkhtmltopdf-ng-pagination-check PROPERTIES TIMEOUT 120)
+            wkhtmltopdf-ng-pagination-check
+            wkhtmltopdf-ng-pdf-edit-check PROPERTIES TIMEOUT 120)
     endif()
 endif()

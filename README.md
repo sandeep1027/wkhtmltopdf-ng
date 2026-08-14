@@ -26,6 +26,9 @@ wkhtmltopdf-ng --enable-local-file-access --page-size A4 input.html out.pdf
 wkhtmltopdf-ng --header-right "[page]/[topage]" --footer-center "Page [page]" \
   --enable-local-file-access input.html out.pdf
 wkhtmltoimage-ng --width 1200 input.html shot.png
+wkhtmltopdf-ng --insert-pdf extra.pdf --after-page 3 original.pdf out.pdf
+wkhtmltopdf-ng --merge-pdf a.pdf b.pdf combined.pdf
+wkhtmltopdf-ng --split-pdf --page-ranges 1-2 original.pdf first-two.pdf
 ```
 
 Headless / no display:
