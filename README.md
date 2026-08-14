@@ -54,6 +54,9 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 ```
 
+Go wrapper (same API as go-wkhtmltopdf):
+[`github.com/sandeep1027/go-wkhtmltopdf-ng`](https://github.com/sandeep1027/go-wkhtmltopdf-ng).
+
 GitHub Releases: https://github.com/sandeep1027/wkhtmltopdf-ng/releases
 
 ## Portable builds (copy to another machine)
