@@ -51,6 +51,8 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 ```
 
+GitHub Releases: https://github.com/sandeep1027/wkhtmltopdf-ng/releases
+
 ## Portable builds (copy to another machine)
 
 Qt WebEngine cannot be one static file. Unpack the folder and run `bin/wkhtmltopdf`.

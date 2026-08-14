@@ -1,0 +1,34 @@
+wkhtmltopdf-ng 0.13.0
+
+Qt 6 WebEngine (Chromium) HTML-to-PDF and HTML-to-image converter.
+Replacement for archived wkhtmltopdf 0.12.x (Qt WebKit).
+
+Download the archive that matches the machine you will run on.
+Unpack the folder and run bin/wkhtmltopdf — do not copy only the binary.
+
+Assets
+  *_linux-amd64.tar.gz   Ubuntu 22.04+ / Debian 12+  (glibc 2.35)
+  *_el9-amd64.tar.gz     Rocky / Alma / CentOS Stream 9  (glibc 2.34)
+  *_windows-amd64.zip    Windows 10/11 (from Actions)
+  *_macos.zip            macOS (experimental, from Actions)
+
+CentOS / RHEL 7 is not supported. Use Docker (packaging/run-docker.sh).
+
+Quick test
+  tar -xzf wkhtmltopdf-ng_0.13.0_linux-amd64.tar.gz
+  cd wkhtmltopdf-ng
+  export QT_QPA_PLATFORM=offscreen
+  export QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox
+  ./bin/wkhtmltopdf --version
+  ./bin/wkhtmltopdf --enable-local-file-access in.html out.pdf
+
+Included
+  CLI: wkhtmltopdf-ng, wkhtmltoimage-ng
+  C API: libwkhtmltox (0.12-style names)
+  Modern CSS/JS via Chromium
+  dpi, smart shrinking, headers/footers, TOC, outline
+  image-dpi / image-quality / lowquality
+  compress, encrypt, linearize, watermark (qpdf)
+  cover / toc / page objects
+
+See README.md and docs/DOC.txt.

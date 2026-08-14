@@ -1,0 +1,80 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  notes:
+    name: Create GitHub release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Create or update release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release edit "$tag" \
+              --title "wkhtmltopdf-ng ${tag}" \
+              --notes-file docs/RELEASE.txt
+          else
+            gh release create "$tag" \
+              --title "wkhtmltopdf-ng ${tag}" \
+              --notes-file docs/RELEASE.txt
+          fi
+
+  linux-portable:
+    name: Ubuntu portable tarball
+    needs: notes
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Install Qt WebEngine toolchain
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            qt6-base-dev qt6-webengine-dev qt6-webengine-dev-tools \
+            libqt6webenginecore6-bin qpdf cmake ninja-build g++
+      - name: Build
+        run: |
+          cmake -S . -B /tmp/wkhtmltopdf-ng-build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build /tmp/wkhtmltopdf-ng-build --parallel
+          mkdir -p /tmp/wkhtmltopdf-ng-bin
+          cp /tmp/wkhtmltopdf-ng-build/wkhtmltopdf-ng \
+             /tmp/wkhtmltopdf-ng-build/wkhtmltoimage-ng \
+             /tmp/wkhtmltopdf-ng-bin/
+          cp -a /tmp/wkhtmltopdf-ng-build/libwkhtmltox.so* /tmp/wkhtmltopdf-ng-bin/
+      - name: Package portable tree
+        run: |
+          mkdir -p dist
+          packaging/scripts/package-linux-portable.sh /tmp/wkhtmltopdf-ng-bin dist
+          ls -lh dist
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${GITHUB_REF_NAME}" dist/*.tar.gz --clobber
+
+  el9-portable:
+    name: Rocky 9 portable tarball
+    needs: notes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Build EL9 portable image
+        run: |
+          docker build -f packaging/docker/Dockerfile.el9 -t wkhtmltopdf-ng-el9 .
+          mkdir -p dist
+          docker run --rm -v "$PWD/dist:/dist" wkhtmltopdf-ng-el9
+          ls -lh dist
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${GITHUB_REF_NAME}" dist/*.tar.gz --clobber

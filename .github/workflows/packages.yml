@@ -7,7 +7,7 @@ on:
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   deb:
@@ -106,3 +106,25 @@ jobs:
         run: |
           deb=$(find package -name '*.deb' | head -n1)
           bash packaging/scripts/validate-consumers.sh "$deb" ${{ matrix.image }}
+
+  publish-release:
+    name: Attach debs to GitHub release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: deb
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download packages
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Upload debs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          for i in $(seq 1 36); do
+            gh release view "$tag" >/dev/null 2>&1 && break
+            sleep 10
+          done
+          find artifacts -name '*.deb' -print
+          gh release upload "$tag" artifacts/*/*.deb --clobber
