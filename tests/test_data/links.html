@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>WKNG Hyperlink Fixture</title>
+  <style>
+    :root {
+      --ink: #142033;
+      --muted: #5b6b82;
+      --paper: #f6f3ea;
+      --accent: #0f4c81;
+      --accent-2: #c45c26;
+      --line: #d7d0c3;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      font: 15px/1.5 "Segoe UI", sans-serif;
+      background: var(--paper);
+    }
+    header.hero {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 20px;
+      padding: 28px 32px 16px;
+      border-bottom: 4px solid var(--accent);
+    }
+    header.hero h1 { margin: 0 0 8px; font-size: 28px; }
+    header.hero p { margin: 0; color: var(--muted); }
+    .badge {
+      align-self: start;
+      justify-self: end;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      background: #fff;
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    nav.toc {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 18px;
+      padding: 12px 32px;
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+    }
+    nav.toc a { color: var(--accent); text-decoration: none; font-weight: 600; }
+    nav.toc a:hover { text-decoration: underline; }
+    main { padding: 20px 32px 40px; }
+    section.chapter {
+      break-before: page;
+      page-break-before: always;
+      min-height: 780px;
+    }
+    section.chapter:first-of-type {
+      break-before: auto;
+      page-break-before: auto;
+      min-height: 420px;
+    }
+    h2 { color: var(--accent); border-bottom: 2px solid var(--line); padding-bottom: 6px; }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+    }
+    .card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 16px;
+    }
+    table.matrix {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+    }
+    table.matrix th, table.matrix td {
+      border: 1px solid var(--line);
+      padding: 8px 10px;
+      text-align: left;
+    }
+    table.matrix th { background: #e8eef6; }
+    a.external { color: var(--accent-2); }
+    a.internal { color: var(--accent); }
+    footer.site {
+      margin-top: 28px;
+      padding-top: 12px;
+      border-top: 1px dashed var(--line);
+      font-size: 13px;
+      color: var(--muted);
+    }
+    @media print {
+      body { background: #fff; }
+      .card, table.matrix { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div>
+      <h1>Complex hyperlink document</h1>
+      <p>Internal anchors jump between chapters. External URLs use unique hosts so tests can find them in the PDF.</p>
+    </div>
+    <div class="badge">WKNG-LINKS-FIXTURE</div>
+  </header>
+
+  <nav class="toc" aria-label="On-page navigation">
+    <a class="internal" href="#wkng-overview">Overview</a>
+    <a class="internal" href="#wkng-catalog">Catalog</a>
+    <a class="internal" href="#wkng-appendix">Appendix</a>
+    <a class="external" href="https://wkhtmltopdf-ng.test/external-docs">External docs</a>
+    <a class="external" href="https://example.com/wkng-status">Status page</a>
+  </nav>
+
+  <main>
+    <section class="chapter" id="wkng-overview">
+      <h2>Overview</h2>
+      <p>
+        This chapter is the start of the document. Jump to the
+        <a class="internal" href="#wkng-appendix">appendix named dest</a>
+        or open the
+        <a class="external" href="https://wkhtmltopdf-ng.test/external-docs">https://wkhtmltopdf-ng.test/external-docs</a>
+        site.
+      </p>
+      <div class="cards">
+        <article class="card">
+          <h3>Same-document</h3>
+          <ul>
+            <li><a class="internal" href="#wkng-catalog">Catalog table</a></li>
+            <li><a class="internal" href="#wkng-pricing">Pricing notes</a></li>
+            <li><a class="internal" href="#wkng-faq">FAQ block</a></li>
+          </ul>
+        </article>
+        <article class="card">
+          <h3>Off-document</h3>
+          <ul>
+            <li><a class="external" href="https://example.com/wkng-status">https://example.com/wkng-status</a></li>
+            <li><a class="external" href="mailto:docs@wkhtmltopdf-ng.test">mailto:docs@wkhtmltopdf-ng.test</a></li>
+            <li><a class="external" href="related.html">relative related.html</a></li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section class="chapter" id="wkng-catalog">
+      <h2>Catalog</h2>
+      <p>Wide content plus a reference matrix. Internal cells point at later sections.</p>
+      <table class="matrix">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Internal</th>
+            <th>External</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Engine notes</td>
+            <td><a class="internal" href="#wkng-appendix">See appendix</a></td>
+            <td><a class="external" href="https://wkhtmltopdf-ng.test/engine">https://wkhtmltopdf-ng.test/engine</a></td>
+          </tr>
+          <tr>
+            <td>Pricing</td>
+            <td><a class="internal" href="#wkng-pricing">Jump to pricing</a></td>
+            <td><a class="external" href="https://example.com/wkng-status">status</a></td>
+          </tr>
+          <tr>
+            <td>Support</td>
+            <td><a class="internal" href="#wkng-faq">Jump to FAQ</a></td>
+            <td><a class="external" href="mailto:docs@wkhtmltopdf-ng.test">email docs</a></td>
+          </tr>
+        </tbody>
+      </table>
+      <p id="wkng-pricing">
+        Pricing notes live on this later page so an in-document link has to travel.
+        Return to <a class="internal" href="#wkng-overview">overview</a>.
+      </p>
+    </section>
+
+    <section class="chapter" id="wkng-appendix">
+      <h2>Appendix</h2>
+      <p id="wkng-faq">
+        FAQ and named destinations. This paragraph is the <strong>wkng-appendix</strong> target.
+        Visit
+        <a class="external" href="https://wkhtmltopdf-ng.test/external-docs#ref">https://wkhtmltopdf-ng.test/external-docs#ref</a>
+        or go back to the <a class="internal" href="#wkng-catalog">catalog</a>.
+      </p>
+      <footer class="site">
+        Mixed footer:
+        <a class="internal" href="#wkng-overview">top</a>
+        ·
+        <a class="external" href="https://example.com/wkng-status">example.com/wkng-status</a>
+      </footer>
+    </section>
+  </main>
+</body>
+</html>

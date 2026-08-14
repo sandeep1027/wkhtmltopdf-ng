@@ -1,0 +1,52 @@
+name: Build Windows Package
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: windows-amd64
+    runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install aqtinstall
+        run: pip install aqtinstall
+
+      - name: Install Qt 6.8 with WebEngine
+        shell: bash
+        run: |
+          aqt install-qt windows desktop 6.8.3 win64_msvc2022_64 -m qtwebengine \
+            --outputdir "$RUNNER_TEMP/qt"
+
+      - name: Package
+        shell: pwsh
+        run: |
+          powershell -ExecutionPolicy Bypass -File packaging/scripts/package-windows.ps1 `
+            -QtRoot "$env:RUNNER_TEMP\qt\6.8.3\msvc2022_64" `
+            -Source "$PWD" `
+            -Output "$PWD/dist"
+
+      - name: Smoke test version output
+        shell: bash
+        run: |
+          unzip -q dist/*.zip -d "$RUNNER_TEMP/smoke"
+          "$RUNNER_TEMP/smoke/bin/wkhtmltopdf-ng.exe" --version
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-amd64
+          path: dist/*.zip

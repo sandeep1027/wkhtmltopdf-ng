@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>JS multi-image fixture</title>
+  <style>
+    body { font: 15px/1.45 sans-serif; color: #132033; margin: 16px; }
+    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    figure { margin: 0; border: 1px solid #d5dde3; padding: 6px; text-align: center; }
+    img { width: 80px; height: 48px; object-fit: cover; display: block; margin: 0 auto 4px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 12px; }
+    th, td { border: 1px solid #d5dde3; padding: 4px 6px; text-align: left; }
+    .sheet { page-break-before: always; break-before: page; min-height: 180mm; }
+    .mark { font-family: monospace; }
+  </style>
+</head>
+<body>
+  <h1>Multi-image + JS logic</h1>
+  <p class="mark" id="status">JS-IMAGES-PENDING</p>
+  <div class="grid" id="gallery">
+    <figure><img src="assets/photo-red.png" alt="red" data-sku="R1"><figcaption>red</figcaption></figure>
+    <figure><img src="assets/photo-green.png" alt="green" data-sku="G1"><figcaption>green</figcaption></figure>
+    <figure><img src="assets/photo-blue.png" alt="blue" data-sku="B1"><figcaption>blue</figcaption></figure>
+    <figure><img src="assets/photo-gold.png" alt="gold" data-sku="Y1"><figcaption>gold</figcaption></figure>
+    <figure><img src="assets/bank-logo.svg" alt="logo" data-sku="LOGO"><figcaption>logo svg</figcaption></figure>
+    <figure><img src="assets/bank-seal.svg" alt="seal" data-sku="SEAL"><figcaption>seal svg</figcaption></figure>
+    <figure><img src="assets/icon.svg" alt="icon" data-sku="ICON"><figcaption>icon svg</figcaption></figure>
+    <figure><img src="assets/missing-no-such.png" alt="broken" data-sku="MISS"><figcaption>broken</figcaption></figure>
+  </div>
+  <table>
+    <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+    <tbody id="metrics"></tbody>
+  </table>
+  <section class="sheet" id="clones">
+    <h2>JS clones</h2>
+    <p>Extra copies created after load + dimension check.</p>
+    <div class="grid" id="clone-grid"></div>
+  </section>
+  <script>
+    (async function () {
+      const imgs = Array.from(document.querySelectorAll("#gallery img"));
+      await Promise.all(imgs.map(function (img) {
+        if (img.complete) return Promise.resolve();
+        return new Promise(function (resolve) {
+          img.addEventListener("load", resolve, { once: true });
+          img.addEventListener("error", resolve, { once: true });
+        });
+      }));
+
+      const ok = imgs.filter(function (img) { return img.naturalWidth > 0; });
+      const broken = imgs.filter(function (img) { return img.naturalWidth === 0; });
+      const area = ok.reduce(function (sum, img) {
+        return sum + img.naturalWidth * img.naturalHeight;
+      }, 0);
+      const skus = ok.map(function (img) { return img.getAttribute("data-sku"); }).sort().join(",");
+
+      const cloneRoot = document.getElementById("clone-grid");
+      ok.forEach(function (img, index) {
+        const copy = img.cloneNode(true);
+        copy.alt = img.alt + "-clone";
+        const fig = document.createElement("figure");
+        fig.appendChild(copy);
+        const cap = document.createElement("figcaption");
+        cap.textContent = "clone-" + (index + 1) + " " + img.naturalWidth + "x" + img.naturalHeight;
+        fig.appendChild(cap);
+        cloneRoot.appendChild(fig);
+      });
+
+      const rows = [
+        ["loaded", String(ok.length)],
+        ["broken", String(broken.length)],
+        ["pixelArea", String(area)],
+        ["skus", skus],
+        ["clones", String(cloneRoot.querySelectorAll("img").length)]
+      ];
+      const body = document.getElementById("metrics");
+      rows.forEach(function (row) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = "<td>" + row[0] + "</td><td class=\"mark\">JS-" + row[0].toUpperCase() + "=" + row[1] + "</td>";
+        body.appendChild(tr);
+      });
+
+      document.getElementById("status").textContent =
+        "JS-IMAGES-READY loaded=" + ok.length + " broken=" + broken.length;
+      window.status = "js-images-done";
+    })().catch(function (err) {
+      document.getElementById("status").textContent = "JS-IMAGES-FAILED " + err;
+      window.status = "js-images-failed";
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="40" viewBox="0 0 160 40">
+  <rect width="160" height="40" rx="4" fill="#0b3d5c"/>
+  <circle cx="18" cy="20" r="10" fill="#f4c95d"/>
+  <text x="34" y="26" font-family="Georgia, serif" font-size="16" fill="#fff">Northridge</text>
+</svg>

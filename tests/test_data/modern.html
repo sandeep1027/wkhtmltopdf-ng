@@ -1,0 +1,21 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Modern HTML PDF smoke test</title>
+  <style>
+    :root { --accent: #2457d6; }
+    body { font-family: sans-serif; margin: 0; color: #172033; }
+    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .card { border: 2px solid var(--accent); border-radius: 8px; padding: 16px; }
+    @media print { .card { break-inside: avoid; } }
+  </style>
+</head>
+<body>
+  <h1>Modern CSS smoke test</h1>
+  <div class="grid">
+    <div class="card">CSS Grid</div>
+    <div class="card">CSS custom properties</div>
+  </div>
+</body>
+</html>

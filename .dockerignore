@@ -1,0 +1,6 @@
+.git
+build
+dist
+packaging/.github
+*.pdf
+core

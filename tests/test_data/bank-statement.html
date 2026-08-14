@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Northridge Bank Statement</title>
+  <style>
+    :root {
+      --navy: #0b3d5c;
+      --gold: #c9a227;
+      --ink: #1a2430;
+      --muted: #5c6b78;
+      --line: #d5dde3;
+      --paper: #f7f4ee;
+      --debit: #9b2c2c;
+      --credit: #1f6b3a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      font: 12px/1.45 "Segoe UI", sans-serif;
+      background: #fff;
+    }
+    header.mast {
+      display: grid;
+      grid-template-columns: 180px 1fr 90px;
+      gap: 16px;
+      align-items: center;
+      padding: 14px 18px 10px;
+      border-bottom: 4px solid var(--navy);
+      background: var(--paper);
+    }
+    header.mast h1 { margin: 0; font-size: 20px; color: var(--navy); }
+    header.mast p { margin: 2px 0 0; color: var(--muted); }
+    .logo { height: 40px; }
+    .seal { width: 72px; height: 72px; }
+    nav.jump {
+      display: flex;
+      gap: 14px;
+      padding: 8px 18px;
+      background: var(--navy);
+    }
+    nav.jump a { color: #fff; text-decoration: none; font-weight: 600; }
+    nav.jump a.external { color: var(--gold); }
+    main { padding: 14px 18px 24px; }
+    .cards {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 10px 12px;
+    }
+    .card h2 { margin: 0 0 8px; font-size: 13px; color: var(--navy); }
+    dl.kv { display: grid; grid-template-columns: 120px 1fr; margin: 0; }
+    dl.kv dt { color: var(--muted); }
+    dl.kv dd { margin: 0 0 4px; font-weight: 600; }
+    table.ledger { width: 100%; border-collapse: collapse; }
+    table.ledger th, table.ledger td {
+      border-bottom: 1px solid var(--line);
+      padding: 6px 7px;
+      text-align: left;
+      vertical-align: middle;
+    }
+    table.ledger th { background: #e8eef3; color: var(--navy); font-size: 11px; }
+    table.ledger td.num, table.ledger th.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .debit { color: var(--debit); }
+    .credit { color: var(--credit); }
+    .prefs label { display: flex; align-items: center; gap: 8px; margin: 5px 0; }
+    input[type="checkbox"] { width: 14px; height: 14px; }
+    .sheet {
+      page-break-before: always;
+      break-before: page;
+    }
+    footer.legal {
+      margin-top: 16px;
+      padding-top: 8px;
+      border-top: 1px dashed var(--line);
+      color: var(--muted);
+      font-size: 10px;
+    }
+    a.receipt { color: var(--navy); }
+    .banner {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      border: 1px solid var(--gold);
+      background: #fff8e6;
+      padding: 8px 10px;
+      margin: 10px 0 14px;
+    }
+    .banner img { width: 36px; height: 36px; }
+    @media print {
+      .card, table.ledger tr { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <header class="mast">
+    <a href="https://northridge-bank.test/online">
+      <img class="logo" src="assets/bank-logo.svg" alt="Northridge Bank" width="160" height="40">
+    </a>
+    <div>
+      <h1>Personal checking statement</h1>
+      <p>Account 4412-8891-03 · 01 Jul 2026 – 31 Jul 2026</p>
+      <p class="marker">BANKSTMT-OK</p>
+    </div>
+    <img class="seal" src="assets/bank-seal.svg" alt="Member seal" width="72" height="72">
+  </header>
+
+  <nav class="jump">
+    <a href="#summary">Summary</a>
+    <a href="#activity">Activity</a>
+    <a href="#disputes">Disputes</a>
+    <a class="external" href="https://northridge-bank.test/online">Online banking</a>
+    <a class="external" href="https://northridge-bank.test/support">Support</a>
+  </nav>
+
+  <main>
+    <section id="summary">
+      <div class="banner">
+        <a href="https://northridge-bank.test/alerts">
+          <img src="assets/icon.svg" alt="Alerts" width="36" height="36">
+        </a>
+        <div>
+          New e-statement ready.
+          <a href="https://northridge-bank.test/statements/2026-07.pdf">Download PDF archive</a>
+          or <a href="#prefs">change delivery preferences</a>.
+        </div>
+      </div>
+      <div class="cards">
+        <article class="card">
+          <h2>Account holder</h2>
+          <dl class="kv">
+            <dt>Name</dt><dd>Alex Rivera</dd>
+            <dt>Address</dt><dd>18 Harbor Lane, Portland, OR</dd>
+            <dt>Statement</dt><dd>STMT-2026-07-4412</dd>
+            <dt>Opening</dt><dd>$4,218.55</dd>
+            <dt>Closing</dt><dd>$3,964.12</dd>
+          </dl>
+        </article>
+        <article class="card" id="prefs">
+          <h2>Delivery preferences</h2>
+          <label><input type="checkbox" checked> Paperless e-statement</label>
+          <label><input type="checkbox" checked> Email fraud alerts</label>
+          <label><input type="checkbox"> Mail paper copy</label>
+          <label><input type="checkbox"> Share with tax advisor</label>
+          <p>Marker <span class="marker">BANK-CHECKBOX-PANEL</span></p>
+        </article>
+      </div>
+    </section>
+
+    <section id="activity">
+      <h2>Account activity</h2>
+      <table class="ledger">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Date</th>
+            <th>Description</th>
+            <th>Reference</th>
+            <th class="num">Amount</th>
+            <th class="num">Balance</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><input type="checkbox"></td>
+            <td>01 Jul</td>
+            <td>Opening balance</td>
+            <td>OPEN</td>
+            <td class="num">—</td>
+            <td class="num">4,218.55</td>
+          </tr>
+          <tr>
+            <td><input type="checkbox"></td>
+            <td>03 Jul</td>
+            <td>Payroll · <a class="receipt" href="https://northridge-bank.test/receipts/PR-8831">PR-8831</a></td>
+            <td>ACH IN</td>
+            <td class="num credit">+2,450.00</td>
+            <td class="num">6,668.55</td>
+          </tr>
+          <tr>
+            <td><input type="checkbox" checked></td>
+            <td>05 Jul</td>
+            <td>Harbor Market POS</td>
+            <td>POS 4412</td>
+            <td class="num debit">-86.40</td>
+            <td class="num">6,582.15</td>
+          </tr>
+          <tr>
+            <td><input type="checkbox"></td>
+            <td>09 Jul</td>
+            <td>Rent · Oak Street LLC</td>
+            <td>ACH OUT</td>
+            <td class="num debit">-1,850.00</td>
+            <td class="num">4,732.15</td>
+          </tr>
+          <tr>
+            <td><input type="checkbox"></td>
+            <td>12 Jul</td>
+            <td>ATM Westside · <a href="#disputes">flag if unknown</a></td>
+            <td>ATM 2291</td>
+            <td class="num debit">-200.00</td>
+            <td class="num">4,532.15</td>
+          </tr>
+          <tr>
+            <td><input type="checkbox"></td>
+            <td>18 Jul</td>
+            <td>Utility · City Water</td>
+            <td>BILLPAY</td>
+            <td class="num debit">-64.18</td>
+            <td class="num">4,467.97</td>
+          </tr>
+          <tr>
+            <td><input type="checkbox" checked></td>
+            <td>22 Jul</td>
+            <td>Unknown merchant HOLD</td>
+            <td>AUTH</td>
+            <td class="num debit">-412.00</td>
+            <td class="num">4,055.97</td>
+          </tr>
+          <tr>
+            <td><input type="checkbox"></td>
+            <td>28 Jul</td>
+            <td>Interest credit</td>
+            <td>INT</td>
+            <td class="num credit">+1.15</td>
+            <td class="num">4,057.12</td>
+          </tr>
+          <tr>
+            <td><input type="checkbox"></td>
+            <td>31 Jul</td>
+            <td>Monthly service fee</td>
+            <td>FEE</td>
+            <td class="num debit">-12.00</td>
+            <td class="num">4,045.12</td>
+          </tr>
+          <tr>
+            <td><input type="checkbox"></td>
+            <td>31 Jul</td>
+            <td>Pending card refund</td>
+            <td>PEND</td>
+            <td class="num debit">-81.00</td>
+            <td class="num">3,964.12</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="marker">BANK-LEDGER</p>
+    </section>
+
+    <section class="sheet" id="disputes">
+      <h2>Dispute worksheet</h2>
+      <p>Check any transaction you do not recognize. Submit at
+        <a class="external" href="https://northridge-bank.test/disputes">https://northridge-bank.test/disputes</a>.
+      </p>
+      <table class="ledger">
+        <thead>
+          <tr>
+            <th>Dispute?</th>
+            <th>Item</th>
+            <th>Reason</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><input type="checkbox" checked></td>
+            <td>22 Jul Unknown merchant HOLD $412.00</td>
+            <td>Not authorized · <span class="marker">BANK-DISPUTE-HOLD</span></td>
+          </tr>
+          <tr>
+            <td><input type="checkbox"></td>
+            <td>12 Jul ATM Westside $200.00</td>
+            <td>I recognize this withdrawal</td>
+          </tr>
+          <tr>
+            <td><input type="checkbox"></td>
+            <td>05 Jul Harbor Market $86.40</td>
+            <td>Household grocery</td>
+          </tr>
+        </tbody>
+      </table>
+      <label><input type="checkbox" checked> I confirm the information above is accurate</label>
+      <label><input type="checkbox"> Contact me by SMS</label>
+      <footer class="legal">
+        Northridge Bank · Member FDIC · Page 2 of statement
+        <a href="#summary">Back to summary</a> ·
+        <a href="mailto:statements@northridge-bank.test">statements@northridge-bank.test</a>
+      </footer>
+    </section>
+  </main>
+</body>
+</html>

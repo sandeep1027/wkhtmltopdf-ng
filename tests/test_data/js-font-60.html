@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>JS font 60-page bench</title>
+  <style>
+    body { margin: 0; color: #142033; }
+    .sheet {
+      min-height: 230mm;
+      padding: 10mm;
+      page-break-after: always;
+      break-after: page;
+      font-family: "JsFace", sans-serif;
+    }
+    .sheet:last-child { page-break-after: auto; break-after: auto; }
+    h1 { margin: 0 0 8px; }
+    .mark { font-family: monospace; }
+  </style>
+</head>
+<body>
+  <p class="mark" id="status">JS-FONT-60-PENDING</p>
+  <div id="root"></div>
+  <script>
+    (async function () {
+      const face = new FontFace("JsFace", "url(assets/js-font.ttf)");
+      document.fonts.add(await face.load());
+      await document.fonts.ready;
+      const root = document.getElementById("root");
+      let html = "";
+      for (let i = 1; i <= 60; i++) {
+        const n = String(i).padStart(2, "0");
+        html += '<section class="sheet"><h1>JS Chapter ' + n + "</h1>" +
+          '<p class="mark">JS-PAGE-' + n + "</p>" +
+          "<p>Generated in JavaScript after FontFace.load().</p></section>";
+      }
+      root.innerHTML = html;
+      document.getElementById("status").textContent = "JS-FONT-60-READY";
+      window.status = "js-font-60-done";
+    })().catch(function (err) {
+      document.getElementById("status").textContent = "JS-FONT-60-FAILED " + err;
+      window.status = "js-font-60-failed";
+    });
+  </script>
+</body>
+</html>

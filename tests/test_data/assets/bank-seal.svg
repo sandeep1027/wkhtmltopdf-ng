@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72" viewBox="0 0 72 72">
+  <circle cx="36" cy="36" r="34" fill="#0b3d5c" stroke="#f4c95d" stroke-width="3"/>
+  <text x="36" y="32" text-anchor="middle" font-family="serif" font-size="9" fill="#f4c95d">MEMBER</text>
+  <text x="36" y="46" text-anchor="middle" font-family="serif" font-size="10" fill="#fff">FDIC</text>
+</svg>

@@ -1,0 +1,108 @@
+name: Build Packages
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  deb:
+    name: ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - ubuntu24-amd64
+          - ubuntu24-arm64
+          - ubuntu22-amd64
+          - debian12-amd64
+          - debian13-amd64
+          - debian13-arm64
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Compute platform and base image
+        id: platform
+        run: |
+          if [[ "${{ matrix.target }}" == *-arm64 ]]; then
+            echo "platform=linux/arm64" >> "$GITHUB_OUTPUT"
+          else
+            echo "platform=linux/amd64" >> "$GITHUB_OUTPUT"
+          fi
+          case "${{ matrix.target }}" in
+            ubuntu24-*) echo "image=ubuntu:24.04" ;;
+            ubuntu22-*) echo "image=ubuntu:22.04" ;;
+            debian12-*) echo "image=debian:12" ;;
+            debian13-*) echo "image=debian:13" ;;
+          esac >> "$GITHUB_OUTPUT"
+
+      - name: Build toolchain image
+        run: |
+          mkdir -p dist
+          docker buildx build \
+            --platform "${{ steps.platform.outputs.platform }}" \
+            --build-arg BASE_IMAGE=${{ steps.platform.outputs.image }} \
+            -f packaging/docker/Dockerfile.build \
+            -t wkhtmltopdf-ng-build:${{ matrix.target }} \
+            --load .
+
+      - name: Build and smoke-test Debian package
+        run: |
+          docker run --rm --platform "${{ steps.platform.outputs.platform }}" \
+            --user "$(id -u):$(id -g)" \
+            -v "$PWD:/src:ro" \
+            -v "$PWD/dist:/out" \
+            wkhtmltopdf-ng-build:${{ matrix.target }} ${{ matrix.target }}
+
+      - name: Inspect package
+        run: dpkg-deb --info dist/*.deb
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}
+          path: dist/*.deb
+
+  validate:
+    name: validate ${{ matrix.target }}
+    needs: deb
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: ubuntu24-amd64
+            image: ubuntu:24.04
+          - target: debian13-amd64
+            image: debian:13
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Download package
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.target }}
+          path: package
+
+      - name: Clean-install validation
+        run: |
+          deb=$(find package -name '*.deb' | head -n1)
+          bash packaging/scripts/validate-package.sh "$deb" ${{ matrix.image }}
+
+      - name: Consumer validation (pdfkit + wicked_pdf)
+        run: |
+          deb=$(find package -name '*.deb' | head -n1)
+          bash packaging/scripts/validate-consumers.sh "$deb" ${{ matrix.image }}

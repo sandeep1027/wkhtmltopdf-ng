@@ -1,0 +1,25 @@
+ARG BASE_IMAGE=debian:13
+FROM ${BASE_IMAGE}
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    ca-certificates \
+    cmake \
+    dpkg-dev \
+    fonts-dejavu-core \
+    libfontconfig1-dev \
+    libfreetype6-dev \
+    libgl1-mesa-dev \
+    libqt6opengl6-dev \
+    libqt6webenginecore6-bin \
+    libxkbcommon-dev \
+    ninja-build \
+    qt6-base-dev \
+    qt6-webengine-dev \
+    qt6-webengine-dev-tools \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY packaging/scripts/build-package.sh /usr/local/bin/build-package
+ENTRYPOINT ["/usr/local/bin/build-package"]

@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Canvas + CDN font fixture</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body { margin: 18px; color: #122033; font-family: Roboto, sans-serif; }
+    h1 { font-weight: 700; }
+    canvas { border: 1px solid #ccc; display: block; margin: 10px 0; }
+    .mark { font-family: monospace; }
+    .sheet { page-break-before: always; break-before: page; min-height: 160mm; }
+  </style>
+</head>
+<body>
+  <h1>Canvas charts + CDN Roboto</h1>
+  <p class="mark" id="status">CANVAS-CDN-PENDING</p>
+  <p id="font-note" class="mark">CDN-FONT-PENDING</p>
+  <p class="mark">CANVAS-BARS</p>
+  <canvas id="bars" width="520" height="220"></canvas>
+  <p class="mark">CANVAS-LINE</p>
+  <canvas id="line" width="520" height="180"></canvas>
+  <section class="sheet">
+    <h2>CDN Chart.js (optional)</h2>
+    <p class="mark" id="cdn-chart">CDN-CHART-PENDING</p>
+    <canvas id="pie" width="360" height="220"></canvas>
+  </section>
+  <script>
+    function drawBars(canvas) {
+      const ctx = canvas.getContext("2d");
+      const vals = [12, 28, 19, 34, 22, 41, 17];
+      const max = Math.max.apply(null, vals);
+      ctx.fillStyle = "#f4f7fb";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      vals.forEach(function (v, i) {
+        const h = (v / max) * 160;
+        ctx.fillStyle = i % 2 ? "#0f4c81" : "#c45c26";
+        ctx.fillRect(30 + i * 70, 190 - h, 48, h);
+        ctx.fillStyle = "#122033";
+        ctx.font = "12px Roboto, sans-serif";
+        ctx.fillText(String(v), 40 + i * 70, 208);
+      });
+      ctx.fillText("CANVAS-BARS", 8, 16);
+    }
+    function drawLine(canvas) {
+      const ctx = canvas.getContext("2d");
+      const vals = [8, 14, 11, 22, 18, 27, 24, 31];
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.beginPath();
+      ctx.strokeStyle = "#0f4c81";
+      ctx.lineWidth = 3;
+      vals.forEach(function (v, i) {
+        const x = 20 + i * 62;
+        const y = 160 - v * 4;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+      ctx.fillStyle = "#122033";
+      ctx.font = "12px Roboto, sans-serif";
+      ctx.fillText("CANVAS-LINE", 8, 16);
+    }
+
+    (async function () {
+      drawBars(document.getElementById("bars"));
+      drawLine(document.getElementById("line"));
+
+      let fontOk = false;
+      try {
+        if (document.fonts && document.fonts.load) {
+          await Promise.race([
+            document.fonts.load("16px Roboto"),
+            new Promise(function (res) { setTimeout(res, 2500); })
+          ]);
+          fontOk = document.fonts.check("16px Roboto");
+        }
+      } catch (e) { fontOk = false; }
+      document.getElementById("font-note").textContent =
+        fontOk ? "CDN-FONT-READY" : "CDN-FONT-FALLBACK";
+
+      let chartOk = false;
+      try {
+        await new Promise(function (resolve, reject) {
+          const s = document.createElement("script");
+          s.src = "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js";
+          s.onload = resolve;
+          s.onerror = reject;
+          document.head.appendChild(s);
+          setTimeout(function () { reject(new Error("chart timeout")); }, 3000);
+        });
+        if (window.Chart) {
+          new Chart(document.getElementById("pie"), {
+            type: "doughnut",
+            data: {
+              labels: ["A", "B", "C"],
+              datasets: [{ data: [12, 19, 7], backgroundColor: ["#0f4c81", "#c45c26", "#1f6b3a"] }]
+            },
+            options: { plugins: { legend: { display: true } }, animation: false }
+          });
+          chartOk = true;
+        }
+      } catch (e) {
+        document.getElementById("cdn-chart").textContent = "CDN-CHART-SKIP";
+      }
+      if (chartOk) document.getElementById("cdn-chart").textContent = "CDN-CHART-READY";
+
+      document.getElementById("status").textContent = "CANVAS-CDN-READY";
+      window.status = "canvas-cdn-done";
+    })().catch(function (err) {
+      document.getElementById("status").textContent = "CANVAS-CDN-FAILED " + err;
+      window.status = "canvas-cdn-failed";
+    });
+  </script>
+</body>
+</html>

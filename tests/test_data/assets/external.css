@@ -1,0 +1,7 @@
+.external-card {
+  width: 160px;
+  height: 80px;
+  background: #eef3ff url("icon.svg") no-repeat right center;
+  border: 2px solid #2457d6;
+  padding: 12px;
+}

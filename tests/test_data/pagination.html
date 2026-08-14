@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Pagination Example</title>
+  <style>
+    :root { --ink: #1b2430; --muted: #5d6b7a; --line: #d5dce3; --accent: #163e64; }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: var(--ink); font: 15px/1.55 "Segoe UI", sans-serif; }
+    .sheet {
+      min-height: 230mm;
+      padding: 6mm 3mm;
+      page-break-after: always;
+      break-after: page;
+    }
+    .sheet:last-child { page-break-after: auto; break-after: auto; }
+    h1 { margin: 0 0 10px; color: var(--accent); font-size: 26px; }
+    h2 { margin: 18px 0 8px; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+    .lede { color: var(--muted); }
+    .marker { font-family: monospace; font-size: 13px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid var(--line); padding: 7px 9px; text-align: left; }
+    th { background: #eef3f8; }
+    ol { padding-left: 1.2em; }
+  </style>
+</head>
+<body>
+  <section class="sheet" id="cover">
+    <h1>Pagination example</h1>
+    <p class="marker">PAGINATION-PAGE-01</p>
+    <p class="lede">
+      This document is six pages long. Separate header and footer HTML files
+      stamp <code>[page]</code> / <code>[topage]</code> on every sheet.
+    </p>
+    <h2>What to look for</h2>
+    <ol>
+      <li>Header band: title on the left, running label, current page on the right.</li>
+      <li>Footer band: first page number, a different label, and page/total.</li>
+      <li>Numbers advance: page 1 of 6 through page 6 of 6.</li>
+    </ol>
+  </section>
+  <section class="sheet" id="contents">
+    <h1>Contents</h1>
+    <p class="marker">PAGINATION-PAGE-02</p>
+    <table>
+      <thead><tr><th>Section</th><th>Starts on</th></tr></thead>
+      <tbody>
+        <tr><td>Cover</td><td>1</td></tr>
+        <tr><td>Contents</td><td>2</td></tr>
+        <tr><td>Overview</td><td>3</td></tr>
+        <tr><td>Method</td><td>4</td></tr>
+        <tr><td>Results</td><td>5</td></tr>
+        <tr><td>Appendix</td><td>6</td></tr>
+      </tbody>
+    </table>
+  </section>
+  <section class="sheet" id="overview">
+    <h1>Overview</h1>
+    <p class="marker">PAGINATION-PAGE-03</p>
+    <p>Body content on page 3. The header should read 3 / 6 and the footer should still start from page 1.</p>
+  </section>
+  <section class="sheet" id="method">
+    <h1>Method</h1>
+    <p class="marker">PAGINATION-PAGE-04</p>
+    <p>Body content on page 4. Pagination tokens are replaced after Chromium prints, using the real page count.</p>
+  </section>
+  <section class="sheet" id="results">
+    <h1>Results</h1>
+    <p class="marker">PAGINATION-PAGE-05</p>
+    <p>Body content on page 5. Both HTML bands keep repeating with the updated page number.</p>
+  </section>
+  <section class="sheet" id="appendix">
+    <h1>Appendix</h1>
+    <p class="marker">PAGINATION-PAGE-06</p>
+    <p>Last page. Header should show 6 / 6 and the footer should show 6/6.</p>
+  </section>
+</body>
+</html>

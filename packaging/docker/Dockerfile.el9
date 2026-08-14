@@ -1,0 +1,33 @@
+# Build a portable wkhtmltopdf-ng tree on Rocky Linux 9 (CentOS / RHEL / Alma 9).
+# Usage:
+#   docker build -f packaging/docker/Dockerfile.el9 -t wkhtmltopdf-ng-el9 .
+#   docker run --rm -v "$PWD/dist:/out" wkhtmltopdf-ng-el9
+#
+# CentOS 7 and CentOS/RHEL 8 are not supported: Qt 6 WebEngine needs a
+# newer glibc than those releases ship.
+
+FROM rockylinux:9
+
+RUN dnf -y install epel-release \
+    && dnf config-manager --set-enabled crb \
+    && dnf -y install \
+        cmake ninja-build gcc-c++ make tar gzip which \
+        qt6-qtbase-devel \
+        qt6-qtwebengine-devel \
+        qt6-qtwebengine \
+        qpdf \
+        fontconfig freetype \
+    && dnf clean all
+
+WORKDIR /src
+COPY . /src
+
+RUN cmake -S /src -B /tmp/build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+    && cmake --build /tmp/build --parallel \
+    && mkdir -p /tmp/bin \
+    && cp /tmp/build/wkhtmltopdf-ng /tmp/build/wkhtmltoimage-ng /tmp/bin/ \
+    && cp -a /tmp/build/libwkhtmltox.so* /tmp/bin/ \
+    && /src/packaging/scripts/package-linux-portable.sh /tmp/bin /out
+
+# docker run --rm -v "$PWD/dist:/dist" wkhtmltopdf-ng-el9
+CMD ["sh", "-c", "cp -a /out/wkhtmltopdf-ng_*.tar.gz /dist/"]

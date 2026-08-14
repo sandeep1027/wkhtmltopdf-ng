@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>JS + local font fixture</title>
+  <style>
+    @font-face {
+      font-family: "CssFace";
+      src: url("assets/js-font.ttf") format("truetype");
+      font-weight: 400;
+    }
+    body { margin: 24px; color: #142033; }
+    h1.css-face { font-family: "CssFace", sans-serif; font-size: 28px; }
+    h2.js-face { font-family: "JsFace", sans-serif; font-size: 22px; }
+    .mark { font-family: monospace; }
+  </style>
+</head>
+<body>
+  <h1 class="css-face">CSS @font-face heading</h1>
+  <p class="mark">JS-FONT-PENDING</p>
+  <h2 class="js-face" id="js-heading">JS FontFace heading</h2>
+  <p id="sample">The quick brown fox jumps over the lazy dog. 0123456789</p>
+  <script>
+    (async function () {
+      try {
+        const face = new FontFace("JsFace", "url(assets/js-font.ttf)");
+        const loaded = await face.load();
+        document.fonts.add(loaded);
+        await document.fonts.ready;
+        const pending = document.querySelector(".mark");
+        pending.textContent = "JS-FONT-READY";
+        document.getElementById("js-heading").textContent =
+          "JS FontFace loaded: " + loaded.family;
+        document.getElementById("sample").style.fontFamily = "JsFace, sans-serif";
+        window.status = "js-font-done";
+      } catch (err) {
+        document.querySelector(".mark").textContent = "JS-FONT-FAILED " + err;
+        window.status = "js-font-failed";
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,51 @@
+ARG BASE_IMAGE=debian:13
+
+FROM ${BASE_IMAGE} AS builder
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    ca-certificates \
+    cmake \
+    libfontconfig1-dev \
+    libfreetype6-dev \
+    libgl1-mesa-dev \
+    libqt6opengl6-dev \
+    libqt6webenginecore6-bin \
+    libxkbcommon-dev \
+    ninja-build \
+    qt6-base-dev \
+    qt6-webengine-dev \
+    qt6-webengine-dev-tools \
+    && rm -rf /var/lib/apt/lists/*
+COPY . /src
+RUN cmake -S /src -B /tmp/build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=/usr/local \
+    && cmake --build /tmp/build --parallel \
+    && cmake --install /tmp/build --strip
+
+FROM ${BASE_IMAGE}
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    fonts-dejavu-core \
+    libfontconfig1 \
+    libfreetype6 \
+    libqt6core6 \
+    libqt6gui6 \
+    libqt6network6 \
+    libqt6positioning6 \
+    libqt6printsupport6 \
+    libqt6webchannel6 \
+    libqt6webenginecore6 \
+    libqt6webenginecore6-bin \
+    libqt6webenginewidgets6 \
+    libqt6widgets6 \
+    qpdf \
+    qt6-qpa-plugins \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --create-home --uid 10001 --shell /usr/sbin/nologin wkhtmltopdf
+COPY --from=builder /usr/local /usr/local
+RUN ln -s wkhtmltopdf-ng /usr/local/bin/wkhtmltopdf && ldconfig
+USER 10001:10001
+ENV QT_QPA_PLATFORM=offscreen
+ENTRYPOINT ["/usr/local/bin/wkhtmltopdf-ng"]

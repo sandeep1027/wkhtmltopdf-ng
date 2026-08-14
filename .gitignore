@@ -1,0 +1,51 @@
+# Local CMake / Ninja trees
+/build/
+/build2/
+/cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+CTestTestfile.cmake
+cmake_install.cmake
+build.ninja
+.ninja_deps
+.ninja_log
+compile_commands.json
+Testing/
+CMakeFiles
+# Packaged binaries and archives
+/dist/
+*.tar.gz
+*.zip
+*.deb
+*.rpm
+
+# Built objects and libraries
+*.o
+*.a
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exe
+core
+
+# Generated test / convert output
+*.pdf
+*.png
+!tests/test_data/**/*.png
+*.jpg
+*.jpeg
+*.ppm
+
+# Editors and OS
+.idea/
+.vscode/
+*.user
+*.swp
+*~
+.DS_Store
+
+# Qt leftovers
+moc_*
+qrc_*
+ui_*

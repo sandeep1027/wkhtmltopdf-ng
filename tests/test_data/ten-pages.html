@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Ten Page Header Footer Fixture</title>
+  <style>
+    :root { --ink: #132033; --line: #c9d3e0; --accent: #0f4c81; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      font: 16px/1.5 "Segoe UI", sans-serif;
+    }
+    .sheet {
+      min-height: 230mm;
+      padding: 8mm 4mm;
+      page-break-after: always;
+      break-after: page;
+    }
+    .sheet:last-child {
+      page-break-after: auto;
+      break-after: auto;
+    }
+    h1 {
+      margin: 0 0 12px;
+      color: var(--accent);
+      border-bottom: 2px solid var(--line);
+      padding-bottom: 6px;
+    }
+    .marker {
+      display: inline-block;
+      padding: 2px 8px;
+      border: 1px solid var(--line);
+      font-family: monospace;
+      font-size: 13px;
+    }
+    p { margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <section class="sheet" id="chapter-1">
+    <h1>Chapter 1</h1>
+    <p class="marker">CHAPTER-01</p>
+    <p>First of ten pages. Header and footer HTML should repeat on every sheet.</p>
+  </section>
+  <section class="sheet" id="chapter-2">
+    <h1>Chapter 2</h1>
+    <p class="marker">CHAPTER-02</p>
+    <p>Second page of the repeating header/footer fixture.</p>
+  </section>
+  <section class="sheet" id="chapter-3">
+    <h1>Chapter 3</h1>
+    <p class="marker">CHAPTER-03</p>
+    <p>Third page of the repeating header/footer fixture.</p>
+  </section>
+  <section class="sheet" id="chapter-4">
+    <h1>Chapter 4</h1>
+    <p class="marker">CHAPTER-04</p>
+    <p>Fourth page of the repeating header/footer fixture.</p>
+  </section>
+  <section class="sheet" id="chapter-5">
+    <h1>Chapter 5</h1>
+    <p class="marker">CHAPTER-05</p>
+    <p>Fifth page of the repeating header/footer fixture.</p>
+  </section>
+  <section class="sheet" id="chapter-6">
+    <h1>Chapter 6</h1>
+    <p class="marker">CHAPTER-06</p>
+    <p>Sixth page of the repeating header/footer fixture.</p>
+  </section>
+  <section class="sheet" id="chapter-7">
+    <h1>Chapter 7</h1>
+    <p class="marker">CHAPTER-07</p>
+    <p>Seventh page of the repeating header/footer fixture.</p>
+  </section>
+  <section class="sheet" id="chapter-8">
+    <h1>Chapter 8</h1>
+    <p class="marker">CHAPTER-08</p>
+    <p>Eighth page of the repeating header/footer fixture.</p>
+  </section>
+  <section class="sheet" id="chapter-9">
+    <h1>Chapter 9</h1>
+    <p class="marker">CHAPTER-09</p>
+    <p>Ninth page of the repeating header/footer fixture.</p>
+  </section>
+  <section class="sheet" id="chapter-10">
+    <h1>Chapter 10</h1>
+    <p class="marker">CHAPTER-10</p>
+    <p>Tenth page. Both HTML bands should still be present with page 10 of 10.</p>
+  </section>
+</body>
+</html>
