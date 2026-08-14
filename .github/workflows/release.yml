@@ -59,7 +59,7 @@ jobs:
       - name: Upload to release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${GITHUB_REF_NAME}" dist/*.tar.gz --clobber
+        run: gh release upload "${GITHUB_REF_NAME}" dist/*.tar.* --clobber
 
   el9-portable:
     name: Rocky 9 portable tarball
@@ -77,4 +77,4 @@ jobs:
       - name: Upload to release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${GITHUB_REF_NAME}" dist/*.tar.gz --clobber
+        run: gh release upload "${GITHUB_REF_NAME}" dist/*.tar.* --clobber

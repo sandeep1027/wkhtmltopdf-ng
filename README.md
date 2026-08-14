@@ -56,16 +56,18 @@ GitHub Releases: https://github.com/sandeep1027/wkhtmltopdf-ng/releases
 ## Portable builds (copy to another machine)
 
 Qt WebEngine cannot be one static file. Unpack the folder and run `bin/wkhtmltopdf`.
+Archives are `.tar.xz` (about 100–130 MB). Chromium itself is ~160 MB, so they
+cannot shrink to a few megabytes.
 
 | Other machine | Archive / how |
 |---|---|
-| Ubuntu 22.04+ / Debian 12+ | `packaging/scripts/package-linux-portable.sh` → `*_linux-amd64.tar.gz` |
-| Rocky / Alma / CentOS Stream **9** | `packaging/scripts/package-el9.sh dist` → `*_el9-amd64.tar.gz` |
+| Ubuntu 22.04+ / Debian 12+ | `packaging/scripts/package-linux-portable.sh` → `*_linux-amd64.tar.xz` |
+| Rocky / Alma / CentOS Stream **9** | `packaging/scripts/package-el9.sh dist` → `*_el9-amd64.tar.xz` |
 | Windows 10/11 | `packaging/scripts/package-windows.ps1` or the Actions `windows-amd64` zip |
 | CentOS / RHEL **7** | Not supported (glibc 2.17). Use Docker. |
 
 ```sh
-tar -xzf wkhtmltopdf-ng_0.13.0_linux-amd64.tar.gz   # or the el9 file
+tar -xJf wkhtmltopdf-ng_0.13.0_linux-amd64.tar.xz   # or the el9 file
 ./wkhtmltopdf-ng/bin/wkhtmltopdf --version
 ./wkhtmltopdf-ng/bin/wkhtmltopdf --enable-local-file-access in.html out.pdf
 ```

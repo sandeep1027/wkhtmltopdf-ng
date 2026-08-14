@@ -16,4 +16,4 @@ mkdir -p "$out"
 "$docker_command" build -f "$root/packaging/docker/Dockerfile.el9" -t "$tag" "$root"
 "$docker_command" run --rm -v "$(CDPATH= cd -- "$out" && pwd):/dist" "$tag"
 printf 'EL9 archive(s) in %s\n' "$out"
-ls -lh "$out"/wkhtmltopdf-ng_*el9*.tar.gz "$out"/wkhtmltopdf-ng_*.tar.gz 2>/dev/null || true
+ls -lh "$out"/wkhtmltopdf-ng_*el9*.tar.* "$out"/wkhtmltopdf-ng_*.tar.* 2>/dev/null || true

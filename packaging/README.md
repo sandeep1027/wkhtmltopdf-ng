@@ -85,7 +85,7 @@ From a machine that already has a built `wkhtmltopdf-ng`:
 
 ```sh
 packaging/scripts/package-linux-portable.sh /tmp/wkhtmltopdf-ng-test dist
-tar -tzf dist/wkhtmltopdf-ng_*_linux-amd64.tar.gz | head
+tar -tJf dist/wkhtmltopdf-ng_*_linux-amd64.tar.xz | head
 ./wkhtmltopdf-ng/bin/wkhtmltopdf input.html output.pdf
 ```
 
@@ -96,8 +96,8 @@ docker build -f packaging/docker/Dockerfile.el9 -t wkhtmltopdf-ng-el9 .
 docker run --rm -v "$PWD/dist:/dist" wkhtmltopdf-ng-el9
 ```
 
-That writes `dist/wkhtmltopdf-ng_*_el9-amd64.tar.gz` (named separately from
-the Ubuntu `*_linux-amd64.tar.gz` bundle). Unpack on Rocky / Alma / CentOS
+That writes `dist/wkhtmltopdf-ng_*_el9-amd64.tar.xz` (named separately from
+the Ubuntu `*_linux-amd64.tar.xz` bundle). Unpack on Rocky / Alma / CentOS
 Stream 9 and run `bin/wkhtmltopdf`. No Qt packages need to be installed on
 that host. The EL9 tree is not meant to run on Ubuntu.
 

@@ -11,7 +11,7 @@ FROM rockylinux:9
 RUN dnf -y install epel-release \
     && dnf config-manager --set-enabled crb \
     && dnf -y install \
-        cmake ninja-build gcc-c++ make tar gzip which \
+        cmake ninja-build gcc-c++ make tar gzip xz binutils patchelf which \
         qt6-qtbase-devel \
         qt6-qtwebengine-devel \
         qt6-qtwebengine \
@@ -30,4 +30,4 @@ RUN cmake -S /src -B /tmp/build -G Ninja -DCMAKE_BUILD_TYPE=Release \
     && /src/packaging/scripts/package-linux-portable.sh /tmp/bin /out
 
 # docker run --rm -v "$PWD/dist:/dist" wkhtmltopdf-ng-el9
-CMD ["sh", "-c", "cp -a /out/wkhtmltopdf-ng_*.tar.gz /dist/"]
+CMD ["sh", "-c", "cp -a /out/wkhtmltopdf-ng_*.tar.* /dist/"]

@@ -84,24 +84,37 @@ for plugin in "$qt_plugins"/tls/*.so; do
     [ -e "$plugin" ] && cp -a "$plugin" "$prefix/plugins/tls/"
 done
 for plugin in "$qt_plugins"/imageformats/*.so; do
-    [ -e "$plugin" ] && cp -a "$plugin" "$prefix/plugins/imageformats/"
+    [ -e "$plugin" ] || continue
+    case "$(basename "$plugin")" in
+        libqpdf.so) continue ;;
+    esac
+    cp -a "$plugin" "$prefix/plugins/imageformats/"
 done
 
 # Qt 6.6+ on EL9 needs v8_context_snapshot.bin as well as the .pak/icu files.
+# Skip Chromium DevTools (~2 MB) — not used for print.
 if [ -d "$qt_data/resources" ]; then
     mkdir -p "$prefix/resources"
-    cp -a "$qt_data/resources/." "$prefix/resources/"
+    for res in "$qt_data/resources"/*; do
+        [ -e "$res" ] || continue
+        case "$(basename "$res")" in
+            qtwebengine_devtools_resources.pak) continue ;;
+        esac
+        cp -a "$res" "$prefix/resources/"
+    done
 fi
+# One English locale is enough for headless print (~20 MB saved vs all packs).
 if [ -d "$qt_data/translations/qtwebengine_locales" ]; then
-    cp -a "$qt_data/translations/qtwebengine_locales/"*.pak \
-        "$prefix/translations/qtwebengine_locales/" 2>/dev/null || true
+    for loc in en-US.pak en-GB.pak; do
+        copy_if "$qt_data/translations/qtwebengine_locales/$loc" \
+            "$prefix/translations/qtwebengine_locales/$loc"
+    done
 fi
 
 if command -v qpdf >/dev/null 2>&1; then
     cp -a "$(command -v qpdf)" "$prefix/bin/qpdf"
 fi
 
-copied=
 copy_deps() {
     binary=$1
     ldd "$binary" 2>/dev/null | awk '
@@ -131,6 +144,13 @@ copy_deps "$prefix/libexec/QtWebEngineProcess"
 for so in "$prefix/plugins"/*/*.so; do
     [ -e "$so" ] && copy_deps "$so"
 done
+
+# Shrink already-copied objects. WebEngine is usually pre-stripped.
+if command -v strip >/dev/null 2>&1; then
+    find "$prefix/lib" "$prefix/libexec" "$prefix/bin" "$prefix/plugins" \
+        -type f \( -name '*.so*' -o -perm -111 \) -exec strip --strip-unneeded {} + \
+        2>/dev/null || true
+fi
 
 cat > "$prefix/bin/wkhtmltopdf-ng-run" <<'EOF'
 #!/bin/sh
@@ -183,15 +203,16 @@ It will run on Linux with that glibc or newer.
 
   CentOS 7 / RHEL 7          — not supported (glibc 2.17)
   CentOS 8 / Rocky 8         — not supported (use the EL9 archive)
-  Rocky 9 / Alma 9 / EL9     — use wkhtmltopdf-ng_*_el9-*.tar.gz
-  Ubuntu 22.04+ / Debian 12+ — use wkhtmltopdf-ng_*_linux-*.tar.gz
+  Rocky 9 / Alma 9 / EL9     — use wkhtmltopdf-ng_*_el9-*.tar.xz
+  Ubuntu 22.04+ / Debian 12+ — use wkhtmltopdf-ng_*_linux-*.tar.xz
 
 qpdf is bundled when present on the build machine. Headers that use
 [page]/[topage], outlines, and --copies need bin/qpdf.
 EOF
 
 mkdir -p "$out_dir"
-archive="$out_dir/wkhtmltopdf-ng_${version}_${os_tag}-${arch}.tar.gz"
-tar -C "$stage" -czf "$archive" wkhtmltopdf-ng
-printf 'created %s\n' "$archive"
+# xz is typically 30–40% smaller than gzip for this Chromium tree.
+archive="$out_dir/wkhtmltopdf-ng_${version}_${os_tag}-${arch}.tar.xz"
+tar -C "$stage" -c wkhtmltopdf-ng | xz -T0 -9 > "$archive"
+printf 'created %s (%s unpacked)\n' "$archive" "$(du -sh "$prefix" | awk '{print $1}')"
 printf 'tree %s\n' "$prefix"

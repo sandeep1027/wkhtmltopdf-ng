@@ -15,6 +15,7 @@ CMakeFiles
 # Packaged binaries and archives
 /dist/
 *.tar.gz
+*.tar.xz
 *.zip
 *.deb
 *.rpm
