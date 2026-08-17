@@ -86,7 +86,7 @@ int pageCount(const QByteArray& pdf)
 }
 
 bool writeOverlay(const QString& path, int pages, const GlobalSettings& global,
-                  const ObjectSettings& settings, const QString& title, QString* error)
+                  const QList<ObjectSettings>& pageSettings, const QString& title, QString* error)
 {
     QPdfWriter writer(path);
     writer.setPageLayout(global.pageLayout);
@@ -105,7 +105,16 @@ bool writeOverlay(const QString& path, int pages, const GlobalSettings& global,
     const qreal bottomMargin = margins.bottom() * 96.0 / 25.4;
     const QString titleText = title;
 
-    auto contextFor = [&](int pageNumber) {
+    // The global force options suppress the in-page CSS headers for every
+    // object; otherwise only objects whose headers contain page-number
+    // placeholders are overlaid, because objects without placeholders keep
+    // their CSS-drawn headers.
+    const bool globalForce = !global.watermark.trimmed().isEmpty() ||
+        global.skipHeaderOnFirst ||
+        global.headerOn != QStringLiteral("all") ||
+        global.footerOn != QStringLiteral("all");
+
+    auto contextFor = [&](int pageNumber, const ObjectSettings& settings) {
         PlaceholderContext context;
         context.page = pageNumber;
         context.pages = pages;
@@ -118,8 +127,8 @@ bool writeOverlay(const QString& path, int pages, const GlobalSettings& global,
         return context;
     };
 
-    auto withReplacements = [&](QString value, int pageNumber) {
-        value = replaceHeaderTokens(value, contextFor(pageNumber));
+    auto withReplacements = [&](QString value, int pageNumber, const ObjectSettings& settings) {
+        value = replaceHeaderTokens(value, contextFor(pageNumber, settings));
         for (auto it = settings.replacements.cbegin(); it != settings.replacements.cend(); ++it) {
             value.replace(QLatin1Char('[') + it.key() + QLatin1Char(']'), it.value(), Qt::CaseInsensitive);
         }
@@ -127,12 +136,12 @@ bool writeOverlay(const QString& path, int pages, const GlobalSettings& global,
     };
 
     auto drawHtml = [&](const QString& value, int fontSize, const QString& fontName,
-                        qreal y, int pageNumber) {
+                        qreal y, int pageNumber, const ObjectSettings& settings) {
         if (value.isEmpty()) return;
         QTextDocument document;
         QFont font(fontName, fontSize);
         document.setDefaultFont(font);
-        document.setHtml(withReplacements(value, pageNumber));
+        document.setHtml(withReplacements(value, pageNumber, settings));
         document.setTextWidth(width);
         painter.save();
         painter.translate(0, y);
@@ -152,6 +161,10 @@ bool writeOverlay(const QString& path, int pages, const GlobalSettings& global,
 
     for (int currentPage = 1; currentPage <= pages; ++currentPage) {
         if (currentPage > 1) writer.newPage();
+        const ObjectSettings& settings = pageSettings.at(currentPage - 1);
+        const bool overlayObject =
+            settings.kind != ObjectKind::Cover && settings.kind != ObjectKind::Toc &&
+            (globalForce || hasPageNumberPlaceholders(settings));
         auto drawAligned = [&](const QString& value, int fontSize, const QString& fontName,
                                qreal y, Qt::Alignment alignment) {
             if (value.isEmpty()) return;
@@ -161,14 +174,16 @@ bool writeOverlay(const QString& path, int pages, const GlobalSettings& global,
             const qreal lineHeight = metrics.height();
             const QRectF bounds(0, y, width, lineHeight + 2);
             painter.drawText(bounds, alignment | Qt::AlignVCenter,
-                             withReplacements(value, currentPage));
+                             withReplacements(value, currentPage, settings));
         };
 
-        const bool drawHeader = pageMatches(global.headerOn, currentPage, global.skipHeaderOnFirst);
-        const bool drawFooter = pageMatches(global.footerOn, currentPage, global.skipHeaderOnFirst);
+        const bool drawHeader = overlayObject &&
+            pageMatches(global.headerOn, currentPage, global.skipHeaderOnFirst);
+        const bool drawFooter = overlayObject &&
+            pageMatches(global.footerOn, currentPage, global.skipHeaderOnFirst);
         if (drawHeader) {
         drawHtml(settings.headerHtml, settings.headerFontSize, settings.headerFontName,
-                 qMax<qreal>(0, topMargin - 2 * settings.headerFontSize), currentPage);
+                 qMax<qreal>(0, topMargin - 2 * settings.headerFontSize), currentPage, settings);
         drawAligned(settings.headerLeft, settings.headerFontSize, settings.headerFontName,
                     qMax<qreal>(0, topMargin - 2 * settings.headerFontSize), Qt::AlignLeft);
         drawAligned(settings.headerRight, settings.headerFontSize, settings.headerFontName,
@@ -181,7 +196,7 @@ bool writeOverlay(const QString& path, int pages, const GlobalSettings& global,
 
         if (drawFooter) {
         drawHtml(settings.footerHtml, settings.footerFontSize, settings.footerFontName,
-                 height - bottomMargin, currentPage);
+                 height - bottomMargin, currentPage, settings);
         drawAligned(settings.footerLeft, settings.footerFontSize, settings.footerFontName,
                     height - bottomMargin, Qt::AlignLeft);
         drawAligned(settings.footerRight, settings.footerFontSize, settings.footerFontName,
@@ -200,7 +215,7 @@ bool writeOverlay(const QString& path, int pages, const GlobalSettings& global,
             painter.translate(width / 2.0, height / 2.0);
             painter.rotate(-35.0);
             painter.drawText(QRectF(-width, -40, width * 2, 80), Qt::AlignCenter,
-                             withReplacements(global.watermark, currentPage));
+                             withReplacements(global.watermark, currentPage, settings));
             painter.restore();
         }
     }
@@ -273,7 +288,8 @@ bool hasPageNumberPlaceholders(const ObjectSettings& settings)
 }
 
 bool applyPageNumberOverlay(const QString& inputPath, const QString& outputPath,
-                            const GlobalSettings& global, const ObjectSettings& settings,
+                            const GlobalSettings& global,
+                            const QList<ObjectSettings>& pageSettings,
                             QString* error)
 {
     QFile input(inputPath);
@@ -288,6 +304,21 @@ bool applyPageNumberOverlay(const QString& inputPath, const QString& outputPath,
         return false;
     }
 
+    // A single settings entry means "the same header/footer on every page"
+    // (the single-object path). Otherwise there must be one entry per page.
+    QList<ObjectSettings> effective = pageSettings;
+    if (effective.size() == 1 && pages > 1) {
+        const ObjectSettings single = effective.first();
+        effective = QList<ObjectSettings>(pages, single);
+    }
+    if (effective.size() != pages) {
+        if (error) {
+            *error = QStringLiteral("page settings do not match PDF page count (%1 vs %2)")
+                         .arg(effective.size()).arg(pages);
+        }
+        return false;
+    }
+
     QTemporaryFile overlay(QDir::tempPath() + QStringLiteral("/wkhtmltopdf-ng-overlay-XXXXXX.pdf"));
     overlay.setAutoRemove(false);
     if (!overlay.open()) {
@@ -297,7 +328,7 @@ bool applyPageNumberOverlay(const QString& inputPath, const QString& outputPath,
     const QString overlayPath = overlay.fileName();
     overlay.close();
 
-    if (!writeOverlay(overlayPath, pages, global, settings, global.documentTitle, error)) {
+    if (!writeOverlay(overlayPath, pages, global, effective, global.documentTitle, error)) {
         QFile::remove(overlayPath);
         return false;
     }

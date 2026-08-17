@@ -502,6 +502,41 @@ bool HtmlToPdfConverter::convertObjectPipeline(const QList<ObjectSettings>& obje
     }
 
     QString currentPath = mergedPath;
+
+    // Per-object page-number overlay. Applied BEFORE --page-ranges (matching
+    // the single-object path) so [page]/[topage] refer to the full document,
+    // and each page is overlaid with the header/footer of the object it came
+    // from. Cover and TOC pages draw no header/footer.
+    QList<ObjectSettings> pageObjects;
+    bool needOverlay = false;
+    const bool globalForce = !m_global.watermark.trimmed().isEmpty() ||
+        m_global.skipHeaderOnFirst ||
+        m_global.headerOn != QStringLiteral("all") ||
+        m_global.footerOn != QStringLiteral("all");
+    for (int i = 0; i < work.size(); ++i) {
+        const ObjectSettings& object = work.at(i);
+        const bool bodyObject = object.kind != ObjectKind::Cover && object.kind != ObjectKind::Toc;
+        if (bodyObject && (globalForce || hasPageNumberPlaceholders(object))) needOverlay = true;
+        for (int page = 0; page < pageCounts.at(i); ++page) pageObjects.append(object);
+    }
+    QTemporaryFile numbered(QDir::tempPath() + QStringLiteral("/wkhtmltopdf-ng-numbered-XXXXXX.pdf"));
+    if (needOverlay) {
+        if (!numbered.open()) {
+            cleanup();
+            if (error) *error = numbered.errorString();
+            return false;
+        }
+        const QString numberedPath = numbered.fileName();
+        numbered.close();
+        QString overlayError;
+        if (!applyPageNumberOverlay(currentPath, numberedPath, m_global, pageObjects, &overlayError)) {
+            cleanup();
+            if (error) *error = overlayError;
+            return false;
+        }
+        currentPath = numberedPath;
+    }
+
     QTemporaryFile ranged(QDir::tempPath() + QStringLiteral("/wkhtmltopdf-ng-ranged-XXXXXX.pdf"));
     if (!m_global.pageRanges.trimmed().isEmpty()) {
         if (!ranged.open()) {
@@ -559,35 +594,6 @@ bool HtmlToPdfConverter::convertObjectPipeline(const QList<ObjectSettings>& obje
             return false;
         }
         currentPath = outlinedPath;
-    }
-
-    ObjectSettings overlaySettings;
-    bool needOverlay = false;
-    for (const ObjectSettings& object : work) {
-        if (object.kind == ObjectKind::Cover || object.kind == ObjectKind::Toc) continue;
-        if (hasPageNumberPlaceholders(object) || !m_global.watermark.isEmpty() ||
-            m_global.skipHeaderOnFirst || m_global.headerOn != QStringLiteral("all") ||
-            m_global.footerOn != QStringLiteral("all")) {
-            overlaySettings = object;
-            needOverlay = true;
-            break;
-        }
-    }
-    QTemporaryFile numbered(QDir::tempPath() + QStringLiteral("/wkhtmltopdf-ng-numbered-XXXXXX.pdf"));
-    if (needOverlay) {
-        if (!numbered.open()) {
-            cleanup();
-            if (error) *error = numbered.errorString();
-            return false;
-        }
-        const QString numberedPath = numbered.fileName();
-        numbered.close();
-        if (!applyPageNumberOverlay(currentPath, numberedPath, m_global, overlaySettings, &writeError)) {
-            cleanup();
-            if (error) *error = writeError;
-            return false;
-        }
-        currentPath = numberedPath;
     }
 
     QTemporaryFile finalized(QDir::tempPath() + QStringLiteral("/wkhtmltopdf-ng-final-XXXXXX.pdf"));
@@ -876,7 +882,8 @@ bool HtmlToPdfConverter::convertDocuments(const QList<ObjectSettings>& inputs, c
                 }
                 const QString numberedPath = numbered.fileName();
                 numbered.close();
-                written = applyPageNumberOverlay(currentPath, numberedPath, m_global, object, &writeError);
+                written = applyPageNumberOverlay(currentPath, numberedPath, m_global,
+                                                 QList<ObjectSettings>{object}, &writeError);
                 if (written) currentPath = numberedPath;
             }
 

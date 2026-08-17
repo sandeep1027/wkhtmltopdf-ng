@@ -30,8 +30,12 @@ struct PlaceholderContext {
 QString replaceHeaderTokens(QString value, const PlaceholderContext& context);
 
 bool hasPageNumberPlaceholders(const ObjectSettings& settings);
+// pageSettings provides the header/footer settings per PDF page (one entry per
+// page, or a single entry that is repeated). Pages belonging to Cover or Toc
+// objects draw no header/footer.
 bool applyPageNumberOverlay(const QString& inputPath, const QString& outputPath,
-                            const GlobalSettings& global, const ObjectSettings& settings,
+                            const GlobalSettings& global,
+                            const QList<ObjectSettings>& pageSettings,
                             QString* error = nullptr);
 bool embedPdfOutlines(const QString& inputPath, const QString& outputPath,
                       const QList<OutlineEntry>& entries, QString* error = nullptr);

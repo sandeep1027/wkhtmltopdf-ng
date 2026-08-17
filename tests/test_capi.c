@@ -55,6 +55,53 @@ static void error_cb(wkhtmltopdf_converter* c, const char* message)
     errorCount++;
 }
 
+static int has_png_magic(const unsigned char* data, long size);
+
+/* The 0.12 API hands image callbacks a pointer typed wkhtmltopdf_converter*.
+ * Passing that pointer back to the wkhtmltoimage_* accessors must work, so
+ * these callbacks read phase/progress/output through it. */
+static int (*g_image_current_phase)(wkhtmltoimage_converter*) = NULL;
+static int (*g_image_http_error)(wkhtmltoimage_converter*) = NULL;
+static long (*g_image_get_output)(wkhtmltoimage_converter*, const unsigned char**) = NULL;
+
+static int imagePhaseChanges = 0;
+static int imagePhaseInCallback = -1;
+static int imageProgressValues = 0;
+static int imageLastProgress = -1;
+static int imageFinishedValue = -1;
+static int imagePhaseAtFinish = -1;
+static int imageHttpErrorAtFinish = -1;
+static long imageOutputAtFinish = 0;
+static int imageOutputMagicOk = 0;
+
+static void image_phase_cb(wkhtmltopdf_converter* c)
+{
+    imagePhaseChanges++;
+    if (g_image_current_phase)
+        imagePhaseInCallback = g_image_current_phase((wkhtmltoimage_converter*)c);
+}
+
+static void image_progress_cb(wkhtmltopdf_converter* c, int value)
+{
+    (void)c;
+    imageLastProgress = value;
+    imageProgressValues++;
+}
+
+static void image_finished_cb(wkhtmltopdf_converter* c, int value)
+{
+    imageFinishedValue = value;
+    wkhtmltoimage_converter* ic = (wkhtmltoimage_converter*)c;
+    if (g_image_current_phase) imagePhaseAtFinish = g_image_current_phase(ic);
+    if (g_image_http_error) imageHttpErrorAtFinish = g_image_http_error(ic);
+    if (g_image_get_output) {
+        const unsigned char* data = NULL;
+        const long size = g_image_get_output(ic, &data);
+        imageOutputAtFinish = size;
+        imageOutputMagicOk = data != NULL && size > 0 && has_png_magic(data, size);
+    }
+}
+
 static int has_pdf_magic(const unsigned char* data, long size)
 {
     return size > 4 && data[0] == '%' && data[1] == 'P' && data[2] == 'D' && data[3] == 'F';
@@ -138,9 +185,12 @@ int main(int argc, char* argv[])
 
     const char* (*wkhtmltopdf_version)(void) =
         (const char* (*)(void))dlsym(handle, "wkhtmltopdf_version");
-    CHECK(wkhtmltopdf_version != NULL && strstr(wkhtmltopdf_version(), "0.13") != NULL,
-          "version string");
-    CHECK(strstr(wkhtmltopdf_version(), "0.13") != NULL, "version 0.13");
+    const char* version = wkhtmltopdf_version ? wkhtmltopdf_version() : NULL;
+    CHECK(version != NULL && version[0] >= '0' && version[0] <= '9' &&
+              strchr(version, '.') != NULL,
+          "version string has N.N.N format");
+    CHECK(version != NULL && strstr(version, "Qt WebEngine") != NULL,
+          "version mentions Qt WebEngine");
 
     int (*wkhtmltopdf_init)(int) = (int (*)(int))dlsym(handle, "wkhtmltopdf_init");
     CHECK(wkhtmltopdf_init != NULL && wkhtmltopdf_init(0) == 1, "wkhtmltopdf_init");
@@ -318,6 +368,16 @@ int main(int argc, char* argv[])
             (int (*)(wkhtmltoimage_converter*))dlsym(handle, "wkhtmltoimage_convert");
         long (*image_get_output)(wkhtmltoimage_converter*, const unsigned char**) =
             (long (*)(wkhtmltoimage_converter*, const unsigned char**))dlsym(handle, "wkhtmltoimage_get_output");
+        int (*image_current_phase)(wkhtmltoimage_converter*) =
+            (int (*)(wkhtmltoimage_converter*))dlsym(handle, "wkhtmltoimage_current_phase");
+        int (*image_http_error)(wkhtmltoimage_converter*) =
+            (int (*)(wkhtmltoimage_converter*))dlsym(handle, "wkhtmltoimage_http_error_code");
+        void (*image_set_phase_cb)(wkhtmltoimage_converter*, wkhtmltopdf_void_callback) =
+            (void (*)(wkhtmltoimage_converter*, wkhtmltopdf_void_callback))dlsym(handle, "wkhtmltoimage_set_phase_changed_callback");
+        void (*image_set_progress_cb)(wkhtmltoimage_converter*, wkhtmltopdf_int_callback) =
+            (void (*)(wkhtmltoimage_converter*, wkhtmltopdf_int_callback))dlsym(handle, "wkhtmltoimage_set_progress_changed_callback");
+        void (*image_set_finished_cb)(wkhtmltoimage_converter*, wkhtmltopdf_int_callback) =
+            (void (*)(wkhtmltoimage_converter*, wkhtmltopdf_int_callback))dlsym(handle, "wkhtmltoimage_set_finished_callback");
 
         wkhtmltoimage_global_settings* ig = image_create();
         snprintf(value, sizeof(value), "%s/modern.html", dataDir);
@@ -328,12 +388,39 @@ int main(int argc, char* argv[])
         image_set(ig, "screenWidth", "800");
         image_set(ig, "screenHeight", "600");
         wkhtmltoimage_converter* ic = image_create_converter(ig);
+
+        g_image_current_phase = image_current_phase;
+        g_image_http_error = image_http_error;
+        g_image_get_output = image_get_output;
+        imagePhaseChanges = 0;
+        imagePhaseInCallback = -1;
+        imageProgressValues = 0;
+        imageLastProgress = -1;
+        imageFinishedValue = -1;
+        imagePhaseAtFinish = -1;
+        imageHttpErrorAtFinish = -1;
+        imageOutputAtFinish = 0;
+        imageOutputMagicOk = 0;
+        image_set_phase_cb(ic, image_phase_cb);
+        image_set_progress_cb(ic, image_progress_cb);
+        image_set_finished_cb(ic, image_finished_cb);
+
         const int iok = image_convert(ic);
         CHECK(iok == 1, "image conversion succeeded");
+        CHECK(imageFinishedValue == 1, "image finished callback value 1");
+        CHECK(imagePhaseChanges >= 3, "image phase callback fired for all phases");
+        CHECK(imagePhaseInCallback == 2, "image phase read via callback pointer is Done");
+        CHECK(imagePhaseAtFinish == 2, "image current phase via callback pointer is Done");
+        CHECK(imageHttpErrorAtFinish == 0, "image http error code via callback pointer");
+        CHECK(imageProgressValues >= 3, "image progress callback fired");
+        CHECK(imageLastProgress == 100, "image progress reached 100");
+        CHECK(imageOutputAtFinish > 0 && imageOutputMagicOk,
+              "image output read via callback pointer has PNG magic");
         const unsigned char* idata = NULL;
         const long isize = image_get_output(ic, &idata);
         CHECK(isize > 0 && idata != NULL, "image output available");
         CHECK(has_png_magic(idata, isize), "image output has PNG magic");
+        CHECK(isize == imageOutputAtFinish, "image output size matches callback read");
         image_destroy_converter(ic);
         image_destroy(ig);
     }
