@@ -1,21 +1,22 @@
-wkhtmltopdf-ng 0.14.0
+wkhtmltopdf-ng 0.14.1
 
 Qt 6 WebEngine (Chromium) HTML-to-PDF and HTML-to-image converter.
 Replacement for archived wkhtmltopdf 0.12.x (Qt WebKit).
 
-New in 0.14.0
-  Fixes and cleanup from a full code review:
-
-  - C API: wkhtmltopdf_* and wkhtmltoimage_* converters now share a
-    layout-compatible state region, so the converter pointer handed to
-    0.12-style callbacks can be safely passed back to
-    wkhtmltoimage_current_phase / wkhtmltoimage_get_output / etc.
-  - Dead settings removed (--use-xserver, pagesCount, resolveRelativeLinks,
-    unused background member); the useLocalLinks / useExternalLinks C API
-    keys now control real link handling instead of being inert.
-  - The version is single-sourced from the VERSION file: both CLIs and
-    libwkhtmltox report it consistently, and a release bump is now a
-    one-file change.
+New in 0.14.1
+  - Headers and footers are now applied per document object: when several
+    inputs each set their own header/footer text with [page]/[topage]
+    tokens, every page carries the header of the object it came from, with
+    page numbers resolved against the merged document. Cover and TOC pages
+    draw no header/footer, and objects without page-number placeholders
+    keep their in-page headers (no double drawing).
+  - Page-number overlays are applied before --page-ranges, so the page
+    numbers shown refer to the full document (consistent with single-input
+    conversions).
+  - The C API image-converter callbacks are now covered by tests: the
+    converter pointer handed to wkhtmltoimage_* callbacks is exercised
+    through wkhtmltoimage_current_phase / wkhtmltoimage_get_output, and the
+    C API version check no longer hardcodes a specific version number.
 
 Download the archive that matches the machine you will run on.
 Unpack the folder and run bin/wkhtmltopdf — do not copy only the binary.
@@ -29,7 +30,7 @@ Assets
 CentOS / RHEL 7 is not supported. Use Docker (packaging/run-docker.sh).
 
 Quick test
-  tar -xJf wkhtmltopdf-ng_0.14.0_linux-amd64.tar.xz
+  tar -xJf wkhtmltopdf-ng_0.14.1_linux-amd64.tar.xz
   cd wkhtmltopdf-ng
   export QT_QPA_PLATFORM=offscreen
   export QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox
