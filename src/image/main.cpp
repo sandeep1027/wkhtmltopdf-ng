@@ -1,6 +1,7 @@
 #include "converter/HtmlToImageConverter.h"
 #include "converter/Settings.h"
 #include "utils/HeadlessQt.h"
+#include "version.h"
 
 #include <QApplication>
 #include <QCommandLineParser>
@@ -39,7 +40,8 @@ int main(int argc, char* argv[])
     parser.process(cliArgs);
 
     if (parser.isSet(QStringLiteral("version"))) {
-        QTextStream(stdout) << "wkhtmltoimage-ng 0.13.2 (Qt WebEngine / Chromium)\n";
+        QTextStream(stdout) << "wkhtmltoimage-ng " << WKHTMLTOPDF_NG_VERSION
+                            << " (Qt WebEngine / Chromium)\n";
         return 0;
     }
 

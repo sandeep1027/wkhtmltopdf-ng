@@ -1,5 +1,6 @@
 #include "private.h"
 #include "utils/HeadlessQt.h"
+#include "version.h"
 
 extern "C" {
 
@@ -20,7 +21,7 @@ int wkhtmltopdf_extended_qt(void)
 
 const char* wkhtmltopdf_version(void)
 {
-    static const char version[] = "0.13.2 (Qt WebEngine)";
+    static const char version[] = WKHTMLTOPDF_NG_VERSION " (Qt WebEngine)";
     return version;
 }
 

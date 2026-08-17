@@ -292,7 +292,6 @@ QString ObjectSettings::get(const char* name) const
     if (key == QStringLiteral("enableLocalFileAccess")) return boolString(enableLocalFileAccess);
     if (key == QStringLiteral("cookieJar")) return cookieJar;
     if (key == QStringLiteral("includeInOutline")) return boolString(includeInOutline);
-    if (key == QStringLiteral("pagesCount")) return boolString(pagesCount);
     if (key == QStringLiteral("stopSlowScripts")) return boolString(stopSlowScripts);
     if (key == QStringLiteral("keepRelativeLinks")) return boolString(keepRelativeLinks);
     if (key == QStringLiteral("web.defaultEncoding") || key == QStringLiteral("encoding"))
@@ -309,8 +308,8 @@ QString ObjectSettings::get(const char* name) const
     if (key == QStringLiteral("postFile")) return postFile;
     if (key == QStringLiteral("viewportSize")) return viewportSize;
     if (key == QStringLiteral("enableSmartShrinking")) return boolString(enableSmartShrinking);
-    if (key == QStringLiteral("useLocalLinks")) return boolString(useLocalLinks);
-    if (key == QStringLiteral("useExternalLinks")) return boolString(useExternalLinks);
+    if (key == QStringLiteral("useLocalLinks")) return boolString(!disableInternalLinks);
+    if (key == QStringLiteral("useExternalLinks")) return boolString(!disableExternalLinks);
     return {};
 }
 
@@ -368,13 +367,8 @@ bool ObjectSettings::set(const char* name, const QString& value)
     if (key == QStringLiteral("enableLocalFileAccess")) return parseBool(value, &enableLocalFileAccess);
     if (key == QStringLiteral("cookieJar")) { cookieJar = value; return true; }
     if (key == QStringLiteral("includeInOutline")) return parseBool(value, &includeInOutline);
-    if (key == QStringLiteral("pagesCount")) return parseBool(value, &pagesCount);
     if (key == QStringLiteral("stopSlowScripts")) return parseBool(value, &stopSlowScripts);
-    if (key == QStringLiteral("keepRelativeLinks")) {
-        if (!parseBool(value, &keepRelativeLinks)) return false;
-        resolveRelativeLinks = !keepRelativeLinks;
-        return true;
-    }
+    if (key == QStringLiteral("keepRelativeLinks")) return parseBool(value, &keepRelativeLinks);
     if (key == QStringLiteral("web.defaultEncoding") || key == QStringLiteral("encoding")) {
         encoding = value;
         return true;
@@ -412,8 +406,18 @@ bool ObjectSettings::set(const char* name, const QString& value)
         return true;
     }
     if (key == QStringLiteral("enableSmartShrinking")) return parseBool(value, &enableSmartShrinking);
-    if (key == QStringLiteral("useLocalLinks")) return parseBool(value, &useLocalLinks);
-    if (key == QStringLiteral("useExternalLinks")) return parseBool(value, &useExternalLinks);
+    if (key == QStringLiteral("useLocalLinks")) {
+        bool enabled = false;
+        if (!parseBool(value, &enabled)) return false;
+        disableInternalLinks = !enabled;
+        return true;
+    }
+    if (key == QStringLiteral("useExternalLinks")) {
+        bool enabled = false;
+        if (!parseBool(value, &enabled)) return false;
+        disableExternalLinks = !enabled;
+        return true;
+    }
     return false;
 }
 

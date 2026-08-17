@@ -17,18 +17,18 @@ void notify(wkhtmltopdf_converter* converter, wkhtmltopdf_str_callback callback,
 
 void setPhase(wkhtmltopdf_converter* converter, int phase)
 {
-    if (!converter || phase == converter->phase) return;
-    converter->phase = phase;
+    if (!converter || phase == converter->common.phase) return;
+    converter->common.phase = phase;
     if (phase >= 0 && phase < pdfPhaseCount) {
-        converter->progress = QByteArray(pdfPhases[phase]) + "...";
+        converter->common.progress = QByteArray(pdfPhases[phase]) + "...";
     }
-    if (converter->phaseCallback) converter->phaseCallback(converter);
+    if (converter->common.phaseCallback) converter->common.phaseCallback(converter);
 }
 
 void setProgress(wkhtmltopdf_converter* converter, int value)
 {
     if (!converter) return;
-    if (converter->progressCallback) converter->progressCallback(converter, value);
+    if (converter->common.progressCallback) converter->common.progressCallback(converter, value);
 }
 
 }
@@ -59,17 +59,17 @@ int wkhtmltopdf_convert(wkhtmltopdf_converter* converter)
     if (outputPath.isEmpty() || outputPath == QStringLiteral("-")) {
         temporary.setAutoRemove(true);
         if (!temporary.open()) {
-            notify(converter, converter->errorCallback, QStringLiteral("cannot create temporary PDF"));
-            if (converter->finishedCallback) converter->finishedCallback(converter, 0);
+            notify(converter, converter->common.errorCallback, QStringLiteral("cannot create temporary PDF"));
+            if (converter->common.finishedCallback) converter->common.finishedCallback(converter, 0);
             return 0;
         }
         outputPath = temporary.fileName();
         temporary.close();
     }
 
-    converter->phase = -1;
-    converter->progress.clear();
-    notify(converter, converter->infoCallback, QStringLiteral("Loading page"));
+    converter->common.phase = -1;
+    converter->common.progress.clear();
+    notify(converter, converter->common.infoCallback, QStringLiteral("Loading page"));
 
     HtmlToPdfConverter renderer(converter->global);
     renderer.setPhaseCallback([&](int phase, int percent) {
@@ -80,24 +80,25 @@ int wkhtmltopdf_convert(wkhtmltopdf_converter* converter)
     const bool success = renderer.convert(converter->objects, outputPath, &error);
 
     if (!success) {
-        converter->httpError = 1;
-        notify(converter, converter->errorCallback, error);
+        converter->common.httpError = 1;
+        notify(converter, converter->common.errorCallback, error);
         setPhase(converter, pdfPhaseCount - 1);
-        converter->progress = QByteArrayLiteral("Done");
+        converter->common.progress = QByteArrayLiteral("Done");
         setProgress(converter, 100);
     } else {
         bool ok = false;
-        converter->output = readAllFile(outputPath, &ok);
+        converter->common.output = readAllFile(outputPath, &ok);
         if (!ok) {
-            converter->output.clear();
-            notify(converter, converter->errorCallback, QStringLiteral("cannot read generated PDF"));
+            converter->common.output.clear();
+            notify(converter, converter->common.errorCallback, QStringLiteral("cannot read generated PDF"));
         }
         setPhase(converter, pdfPhaseCount - 1);
-        converter->progress = QByteArrayLiteral("Done");
+        converter->common.progress = QByteArrayLiteral("Done");
         setProgress(converter, 100);
-        notify(converter, converter->infoCallback, QStringLiteral("PDF generated"));
+        notify(converter, converter->common.infoCallback, QStringLiteral("PDF generated"));
     }
-    if (converter->finishedCallback) converter->finishedCallback(converter, success ? 1 : 0);
+    if (converter->common.finishedCallback)
+        converter->common.finishedCallback(converter, success ? 1 : 0);
     return success ? 1 : 0;
 }
 
@@ -112,7 +113,7 @@ void wkhtmltopdf_add_object(wkhtmltopdf_converter* converter,
 }
 
 int wkhtmltopdf_current_phase(wkhtmltopdf_converter* converter)
-{ return converter ? converter->phase : 0; }
+{ return converter ? converter->common.phase : 0; }
 
 int wkhtmltopdf_phase_count(wkhtmltopdf_converter*)
 { return wkhtmltox::pdfPhaseCount; }
@@ -120,22 +121,22 @@ int wkhtmltopdf_phase_count(wkhtmltopdf_converter*)
 const char* wkhtmltopdf_phase_description(wkhtmltopdf_converter* converter, int phase)
 {
     if (!converter) return nullptr;
-    if (phase == -1) phase = converter->phase;
+    if (phase == -1) phase = converter->common.phase;
     if (phase < 0 || phase >= wkhtmltox::pdfPhaseCount) return nullptr;
     return wkhtmltox::pdfPhases[phase];
 }
 
 const char* wkhtmltopdf_progress_string(wkhtmltopdf_converter* converter)
-{ return converter ? converter->progress.constData() : nullptr; }
+{ return converter ? converter->common.progress.constData() : nullptr; }
 
 int wkhtmltopdf_http_error_code(wkhtmltopdf_converter* converter)
-{ return converter ? converter->httpError : 0; }
+{ return converter ? converter->common.httpError : 0; }
 
 long wkhtmltopdf_get_output(wkhtmltopdf_converter* converter, const unsigned char** data)
 {
     if (!converter || !data) return 0;
-    *data = reinterpret_cast<const unsigned char*>(converter->output.constData());
-    return converter->output.size();
+    *data = reinterpret_cast<const unsigned char*>(converter->common.output.constData());
+    return converter->common.output.size();
 }
 
 }

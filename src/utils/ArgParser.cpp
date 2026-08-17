@@ -67,7 +67,6 @@ bool isGlobalOnly(const QString& option)
            option == QStringLiteral("--no-pdf-compression") ||
            option == QStringLiteral("--compress") || option == QStringLiteral("--pdf-compression") ||
            option == QStringLiteral("--compress-level") || option == QStringLiteral("--optimize-images") ||
-           option == QStringLiteral("--use-xserver") ||
            option == QStringLiteral("--read-args-from-stdin") ||
            option == QStringLiteral("--print-media-type") ||
            option == QStringLiteral("--no-print-media-type") ||
@@ -166,11 +165,11 @@ bool applyFlag(const QString& argument, GlobalSettings* global, ObjectSettings* 
     }
     if (argument == QStringLiteral("--keep-relative-links")) {
         object->keepRelativeLinks = true;
-        object->resolveRelativeLinks = false;
         return true;
     }
     if (argument == QStringLiteral("--resolve-relative-links")) {
-        object->resolveRelativeLinks = true;
+        // Links are resolved to absolute by Chromium by default; this flag
+        // only undoes --keep-relative-links.
         object->keepRelativeLinks = false;
         return true;
     }
@@ -192,7 +191,9 @@ bool applyFlag(const QString& argument, GlobalSettings* global, ObjectSettings* 
     if (argument == QStringLiteral("--read-args-from-stdin")) { global->readArgsFromStdin = true; return true; }
     if (argument == QStringLiteral("--disable-smart-shrinking")) { object->enableSmartShrinking = false; return true; }
     if (argument == QStringLiteral("--enable-smart-shrinking")) { object->enableSmartShrinking = true; return true; }
-    if (argument == QStringLiteral("--use-xserver")) { global->useXServer = QStringLiteral("1"); return true; }
+    // Accepted for wkhtmltopdf 0.12 command-line compatibility. Qt WebEngine
+    // always runs headless (offscreen platform), so an X server is never used.
+    if (argument == QStringLiteral("--use-xserver")) return true;
     if (argument == QStringLiteral("--no-pdf-compression")) {
         global->useCompression = false;
         global->recompressPdf = false;
@@ -321,8 +322,6 @@ bool applyValue(const QString& argument, const QString& value, GlobalSettings* g
     else if (argument == QStringLiteral("--user-password")) global->userPassword = value;
     else if (argument == QStringLiteral("--owner-password")) global->ownerPassword = value;
     else if (argument == QStringLiteral("--watermark")) global->watermark = value;
-    else if (argument == QStringLiteral("--header-on")) *ok = global->set("headerOn", value);
-    else if (argument == QStringLiteral("--footer-on")) *ok = global->set("footerOn", value);
     else if (argument == QStringLiteral("--retry")) *ok = global->set("retry", value);
     else if (argument == QStringLiteral("--timeout")) *ok = global->set("timeout", value);
     else if (argument == QStringLiteral("--ssl-crt-path")) global->sslCrtPath = value;

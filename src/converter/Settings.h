@@ -52,7 +52,6 @@ public:
     int pageOffset = 0;             // --page-offset
     int copies = 1;                 // --copies
     bool collate = true;            // --collate/--no-collate
-    QString useXServer;             // --use-xserver
     bool readArgsFromStdin = false; // --read-args-from-stdin
     QString cacheDir;               // --cache-dir
     bool dumpDefaultTocXsl = false; // --dump-default-toc-xsl
@@ -106,7 +105,6 @@ public:
     bool enableLocalFileAccess = false;  // --enable-local-file-access
     bool produceForms = false;      // --produce-forms
     bool includeInOutline = true;   // --include-in-outline
-    bool pagesCount = true;         // --pages-count
     int javascriptDelay = 200;      // --javascript-delay
     QString windowStatus;           // --window-status
     QUrl proxy;                     // --proxy
@@ -133,20 +131,16 @@ public:
     bool disableInternalLinks = false; // --disable-internal-links
     bool printBackground = true;    // --background/--no-background
     bool keepRelativeLinks = false; // --keep-relative-links
-    bool resolveRelativeLinks = true; // --resolve-relative-links
     QString encoding = "utf-8";     // --encoding
     double zoom = 1.0;              // --zoom
     QString viewportSize;           // --viewport-size
     int minimumFontSize = 0;        // --minimum-font-size (0 = engine default)
-    QString background = "";        // --background
     QMap<QString, QString> replacements; // --replace NAME VALUE
     QString postData;               // --post
     QString postFile;               // --post-file
     QList<QPair<QString, QString>> postFields; // --post NAME VALUE
     QList<QPair<QString, QString>> postFiles;  // --post-file NAME PATH
     bool enableSmartShrinking = true; // --enable-smart-shrinking
-    bool useLocalLinks = true;      // --enable-internal-links/--disable-internal-links
-    bool useExternalLinks = true;   // --enable-external-links/--disable-external-links
 
     // TOC settings
     bool toc = false;               // --toc

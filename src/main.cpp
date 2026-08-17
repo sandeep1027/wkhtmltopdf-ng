@@ -3,6 +3,7 @@
 #include "converter/TocGenerator.h"
 #include "utils/ArgParser.h"
 #include "utils/HeadlessQt.h"
+#include "version.h"
 
 #include <QApplication>
 #include <QTextStream>
@@ -10,7 +11,7 @@
 #include <QIODevice>
 
 namespace {
-constexpr const char* version = "0.13.2";
+constexpr const char* version = WKHTMLTOPDF_NG_VERSION;
 }
 
 int processArguments(QApplication& application, const QStringList& args)

@@ -1,5 +1,11 @@
 cmake_minimum_required(VERSION 3.16)
-project(wkhtmltopdf-ng VERSION 0.13.2 LANGUAGES C CXX)
+
+# Single source of truth for the version: the VERSION file.
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" _wkhtmltopdf_ng_version)
+string(STRIP "${_wkhtmltopdf_ng_version}" _wkhtmltopdf_ng_version)
+project(wkhtmltopdf-ng VERSION ${_wkhtmltopdf_ng_version} LANGUAGES C CXX)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/VERSION")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -29,8 +35,14 @@ add_library(wkhtmltopdf_core STATIC
 )
 set_target_properties(wkhtmltopdf_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in
+    ${CMAKE_CURRENT_BINARY_DIR}/generated/version.h
+    @ONLY)
+
 target_include_directories(wkhtmltopdf_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_BINARY_DIR}/generated
 )
 
 target_link_libraries(wkhtmltopdf_core PUBLIC
@@ -65,7 +77,7 @@ target_compile_definitions(wkhtmltox PRIVATE WKHTMLTOX_BUILD)
 target_link_libraries(wkhtmltox PRIVATE wkhtmltopdf_core)
 set_target_properties(wkhtmltox PROPERTIES
     SOVERSION 0
-    VERSION 0.13.2
+    VERSION ${PROJECT_VERSION}
     OUTPUT_NAME wkhtmltox
     POSITION_INDEPENDENT_CODE ON
 )
