@@ -1,4 +1,4 @@
-wkhtmltopdf-ng 0.14.3 — using it on a machine
+wkhtmltopdf-ng 0.14.4 — using it on a machine
 =============================================
 
 This is the detailed guide for installing and running wkhtmltopdf-ng on a
@@ -8,22 +8,22 @@ and you do not ship Chromium next to the binary.
 
 This document is NOT about:
 
-  dist/wkhtmltopdf-ng_0.14.3_linux-amd64.tar.xz
-  dist/wkhtmltopdf-ng_0.14.3_el9-amd64.tar.xz
+  dist/wkhtmltopdf-ng_0.14.4_linux-amd64.tar.xz
+  dist/wkhtmltopdf-ng_0.14.4_el9-amd64.tar.xz
   the Windows / macOS portable zip
 
 Those copies of Qt, QtWebEngineProcess, resources/, and qpdf. See
 docs/DOC.txt section 7 and packaging/README.md for that path.
 
 Full flag list:          docs/DOC.txt
-What changed in 0.14.3:  docs/RELEASE.txt
+What changed in 0.14.4:  docs/RELEASE.txt
 Short overview:          README.md
 
 
 Minimum versions
 ----------------
 
-  wkhtmltopdf-ng     0.14.3          this release
+  wkhtmltopdf-ng     0.14.4          this release
   Qt 6 WebEngine     6.2             required to build and run
                      6.8             required for --page-ranges
   qpdf               10.6            --attach needs 10.6+; older qpdf
@@ -215,7 +215,7 @@ Check that the pieces exist:
 
 Expected --version line:
 
-  wkhtmltopdf-ng 0.14.3 (Qt WebEngine / Chromium)
+  wkhtmltopdf-ng 0.14.4 (Qt WebEngine / Chromium)
 
 
 5. Distro notes
@@ -326,11 +326,11 @@ They install into /usr/local and pull the Qt 6.8 runtime via apt.
 Build the .deb (needs Docker):
 
   packaging/build.sh debian13-amd64
-  # writes dist/wkhtmltopdf-ng_0.14.3_amd64.deb
+  # writes dist/wkhtmltopdf-ng_0.14.4_amd64.deb
 
 On the Debian 13 machine:
 
-  sudo apt install ./wkhtmltopdf-ng_0.14.3_amd64.deb
+  sudo apt install ./wkhtmltopdf-ng_0.14.4_amd64.deb
 
 apt resolves Qt / qpdf / fonts / ca-certificates for you. After
 install:
@@ -558,7 +558,7 @@ position:fixed top/bottom bars print on every page.
 They are out of flow. On an automatic page break, body text would
 sit under the footer unless print margins reserve that height.
 
-From 0.14.3 the converter measures those bars and grows
+From 0.14.4 the converter measures those bars and grows
 --margin-top / --margin-bottom before printToPdf so content stops
 above the footer and continues on the next page.
 
@@ -791,7 +791,7 @@ macOS:
       uncompressed bitmaps. Use --compress.
 
   Footer overlaps the last lines on a long page
-      CSS position:fixed. 0.14.3+ reserves print margins for those
+      CSS position:fixed. 0.14.4+ reserves print margins for those
       bars. Or set --margin-bottom larger than the footer height.
 
   --page-ranges does nothing
