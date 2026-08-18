@@ -31,7 +31,7 @@ int main(int argc, char* argv[])
     parser.addOption({QStringLiteral("crop-width"), QStringLiteral("Crop width"), QStringLiteral("pixels")});
     parser.addOption({QStringLiteral("crop-height"), QStringLiteral("Crop height"), QStringLiteral("pixels")});
     parser.addOption({QStringLiteral("transparent"), QStringLiteral("Use a transparent page background")});
-    parser.addOption({QStringLiteral("enable-local-file-access"), QStringLiteral("Allow local file resources")});
+    parser.addOption({QStringLiteral("enable-local-file-access"), QStringLiteral("Allow file:// pages to read other local files")});
     parser.addOption({QStringLiteral("disable-javascript"), QStringLiteral("Disable JavaScript")});
     parser.addOption({QStringLiteral("disable-smart-width"), QStringLiteral("Do not expand width to content")});
     parser.addOption({QStringLiteral("zoom"), QStringLiteral("Zoom factor"), QStringLiteral("factor"), QStringLiteral("1")});

@@ -928,8 +928,9 @@ bool HtmlToPdfConverter::convertDocuments(const QList<ObjectSettings>& inputs, c
     webSettings->setAttribute(QWebEngineSettings::JavascriptEnabled, object.enableJavascript);
     webSettings->setAttribute(QWebEngineSettings::LocalContentCanAccessFileUrls,
                               object.enableLocalFileAccess || !object.allowedPaths.isEmpty());
-    webSettings->setAttribute(QWebEngineSettings::LocalContentCanAccessRemoteUrls,
-                              object.enableLocalFileAccess);
+    // Remote http(s) from a file:// page is allowed by default, matching
+    // wkhtmltopdf 0.12. Local files stay gated on --enable-local-file-access.
+    webSettings->setAttribute(QWebEngineSettings::LocalContentCanAccessRemoteUrls, true);
     webSettings->setAttribute(QWebEngineSettings::AutoLoadImages, object.loadImages);
     webSettings->setAttribute(QWebEngineSettings::PluginsEnabled, object.enablePlugins);
     webSettings->setAttribute(QWebEngineSettings::JavascriptCanOpenWindows, false);
@@ -959,6 +960,7 @@ bool HtmlToPdfConverter::convertDocuments(const QList<ObjectSettings>& inputs, c
 
     QEventLoop loop;
     QElapsedTimer timeout;
+    QElapsedTimer paintWait;
     timeout.start();
     int loadAttempts = 0;
     bool success = false;
@@ -1363,8 +1365,16 @@ bool HtmlToPdfConverter::convertDocuments(const QList<ObjectSettings>& inputs, c
     };
 
     waitForFonts = [&]() {
-        const int fontBudget = object.stopSlowScripts ? 400 : 4000;
-        if (timeout.elapsed() > fontBudget || !object.enableJavascript) {
+        if (!object.enableJavascript) {
+            checkMediaThenInject();
+            return;
+        }
+        // Budget starts when we begin waiting, not at convert() start — page
+        // load already used most of the old 400ms window, so remote images
+        // never finished unless the user padded --javascript-delay.
+        if (!paintWait.isValid()) paintWait.start();
+        const int paintBudget = object.stopSlowScripts ? 3000 : 20000;
+        if (paintWait.elapsed() > paintBudget) {
             checkMediaThenInject();
             return;
         }

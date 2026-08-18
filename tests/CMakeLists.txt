@@ -208,6 +208,16 @@ if(EXISTS "/usr/lib/qt6/libexec/QtWebEngineProcess")
             $<TARGET_FILE:wkhtmltopdf-ng>
             ${CMAKE_CURRENT_SOURCE_DIR}/test_data
             ${CMAKE_CURRENT_BINARY_DIR}/print-layout-check)
+    add_test(NAME wkhtmltopdf-ng-remote-images-check
+        COMMAND /bin/bash ${CMAKE_CURRENT_SOURCE_DIR}/remote_images.sh
+            $<TARGET_FILE:wkhtmltopdf-ng>
+            ${CMAKE_CURRENT_SOURCE_DIR}/test_data
+            ${CMAKE_CURRENT_BINARY_DIR}/remote-images-check)
+    add_test(NAME wkhtmltopdf-ng-reg-next-check
+        COMMAND /bin/bash ${CMAKE_CURRENT_SOURCE_DIR}/reg_next.sh
+            $<TARGET_FILE:wkhtmltopdf-ng>
+            ${CMAKE_CURRENT_SOURCE_DIR}/test_data
+            ${CMAKE_CURRENT_BINARY_DIR}/reg-next-check)
     set_tests_properties(wkhtmltopdf-ng-dpi wkhtmltopdf-ng-smart-shrinking
         wkhtmltopdf-ng-links wkhtmltopdf-ng-links-no-external
         wkhtmltopdf-ng-links-no-internal wkhtmltopdf-ng-links-check
@@ -216,7 +226,8 @@ if(EXISTS "/usr/lib/qt6/libexec/QtWebEngineProcess")
         wkhtmltopdf-ng-js-images wkhtmltopdf-ng-js-images-check
         wkhtmltopdf-ng-heavy-cdn-check
         wkhtmltopdf-ng-modern-css-js wkhtmltopdf-ng-modern-css-js-check
-        wkhtmltopdf-ng-print-layout-check
+        wkhtmltopdf-ng-print-layout-check wkhtmltopdf-ng-remote-images-check
+        wkhtmltopdf-ng-reg-next-check
         PROPERTIES
             ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox"
             TIMEOUT 60)
@@ -224,7 +235,8 @@ if(EXISTS "/usr/lib/qt6/libexec/QtWebEngineProcess")
         wkhtmltopdf-ng-bank-statement-check
         wkhtmltopdf-ng-js-font-check wkhtmltopdf-ng-js-images-check
         wkhtmltopdf-ng-heavy-cdn-check wkhtmltopdf-ng-modern-css-js-check
-        wkhtmltopdf-ng-print-layout-check
+        wkhtmltopdf-ng-print-layout-check wkhtmltopdf-ng-remote-images-check
+        wkhtmltopdf-ng-reg-next-check
         PROPERTIES TIMEOUT 180)
 
     add_test(NAME wkhtmltoimage-ng-png

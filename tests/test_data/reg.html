@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>reg — next-fix benchmark</title>
+<style>
+@font-face {
+    font-family: "RegLocal";
+    src: url("assets/reg-font.woff2") format("woff2");
+    font-weight: 400;
+    font-display: block;
+}
+
+@page {
+    size: A4;
+    /* Keep the content box below/above the 14mm/12mm position:fixed bars
+       so a repeated thead is not painted under the chrome. */
+    margin: 16mm 14mm 16mm 14mm;
+}
+
+* { box-sizing: border-box; }
+html, body {
+    margin: 0;
+    padding: 0;
+    font-family: "Segoe UI", Arial, sans-serif;
+    color: #1f2937;
+    font-size: 10.5pt;
+}
+
+/* Fixed chrome — same idea as print hacks that use negative body margins. */
+.fixed-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 14mm;
+    background: #111827;
+    color: #fff;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    font-size: 9pt;
+}
+.fixed-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 12mm;
+    background: #111827;
+    color: #cbd5e1;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    font-size: 8pt;
+}
+
+/* Intentional overlap variant (some print CSS uses this). */
+.unsafe-overlap {
+    margin-top: -8mm;
+    margin-bottom: -8mm;
+}
+
+/* Safe content offset around the fixed bars. */
+.safe-content {
+    padding-top: 16mm;
+    padding-bottom: 14mm;
+}
+
+h1 { font-size: 20pt; margin: 0 0 8px; }
+h2 { font-size: 13pt; margin: 18px 0 8px; border-left: 4px solid #635bff; padding-left: 8px; }
+.woff2 { font-family: "RegLocal", "Courier New", monospace; font-size: 18pt; }
+.card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; margin: 8px 0; }
+.row { display: flex; gap: 10px; }
+.row img { width: 32%; height: 90px; object-fit: cover; background: #fee2e2; }
+.status { font-family: monospace; font-size: 8pt; }
+
+table.repeat {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+}
+table.repeat thead { display: table-header-group; }
+table.repeat th {
+    background: #111827;
+    color: #fff;
+    text-align: left;
+    padding: 6px 8px;
+}
+table.repeat td { border-bottom: 1px solid #e5e7eb; padding: 9px 8px; }
+table.repeat tr { break-inside: avoid; page-break-inside: avoid; }
+
+.page-break { page-break-before: always; break-before: page; }
+</style>
+</head>
+<body>
+<div class="fixed-header"><span>REG BENCHMARK</span><span>fixed top:0</span></div>
+<div class="fixed-footer"><span>fixed bottom:0</span><span>do not assume renderer bug if body uses negative margins</span></div>
+
+<section class="safe-content" id="page1">
+    <h1>Renderer next-fix benchmark</h1>
+    <p>Working areas (flex/grid/gradients/svg/etc.) are not re-tested here.</p>
+
+    <h2>1. Images</h2>
+    <div class="row">
+        <img id="img-remote-a" src="https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&amp;fit=crop&amp;w=400&amp;h=180&amp;q=60" alt="unsplash-a">
+        <img id="img-remote-b" src="https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&amp;fit=crop&amp;w=400&amp;h=180&amp;q=60" alt="unsplash-b">
+        <img id="img-remote-c" src="https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&amp;fit=crop&amp;w=400&amp;h=180&amp;q=60" alt="unsplash-c">
+    </div>
+    <p class="status" id="st-remote">REMOTE pending</p>
+    <div class="row">
+        <img id="img-local" src="assets/photo-red.png" alt="local-file">
+        <img id="img-data" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAAAwCAIAAAAJh2qgAAAASElEQVR42u3PAQkAAAwDoMVZfx7wQSZYwFw7JcLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsIrHi3gPOIlfiyWAAAAAElFTkSuQmCC" alt="data-uri">
+    </div>
+    <p class="status" id="st-local">LOCAL pending</p>
+    <p class="status" id="st-data">DATA pending</p>
+
+    <h2>2. Custom local WOFF2</h2>
+    <p class="woff2" id="woff2-sample">WOFF2-LOCAL The quick brown fox</p>
+    <p class="status" id="st-font">FONT pending</p>
+
+    <h2>3. Fixed header/footer — safe padding</h2>
+    <p>This block uses padding-top/bottom so body text should sit below the fixed header and above the footer.</p>
+    <p>SAFE-CONTENT-START First line under the header.</p>
+</section>
+
+<section class="page-break unsafe-overlap" id="page-unsafe">
+    <h2>Fixed header/footer — negative margins (intentional)</h2>
+    <p>UNSAFE-OVERLAP-START This section uses margin-top/bottom: -8mm. Overlap here is the CSS, not a Chromium print bug.</p>
+</section>
+
+<section class="page-break safe-content" id="page-table">
+    <h2>4. Repeating table headers (80 rows)</h2>
+    <table class="repeat">
+        <thead>
+            <tr><th>Row</th><th>Code</th><th>Name</th><th>Amount</th></tr>
+        </thead>
+        <tbody id="rows"></tbody>
+    </table>
+</section>
+
+<script>
+(function () {
+    var body = document.getElementById("rows");
+    for (var i = 1; i <= 80; i++) {
+        var tr = document.createElement("tr");
+        tr.innerHTML = "<td>" + i + "</td><td>SKU-" + (1000 + i) +
+            "</td><td>Line item " + i + "</td><td>$" + (i * 13) + "</td>";
+        body.appendChild(tr);
+    }
+
+    function label(el, img) {
+        var ok = img.complete && img.naturalWidth > 0;
+        el.textContent = img.id.toUpperCase() + " " + (ok ? "OK nw=" + img.naturalWidth : "FAIL nw=" + img.naturalWidth);
+        return ok;
+    }
+
+    function waitImg(img) {
+        if (img.complete) return Promise.resolve();
+        return new Promise(function (resolve) {
+            img.onload = resolve;
+            img.onerror = resolve;
+        });
+    }
+
+    Promise.all(Array.from(document.images).map(waitImg))
+        .then(function () { return document.fonts ? document.fonts.ready : Promise.resolve(); })
+        .then(function () {
+            return new Promise(function (resolve) {
+                requestAnimationFrame(function () { requestAnimationFrame(resolve); });
+            });
+        })
+        .then(function () {
+            var a = label(document.getElementById("st-remote"), document.getElementById("img-remote-a"));
+            var b = label(document.createElement("p"), document.getElementById("img-remote-b"));
+            var c = label(document.createElement("p"), document.getElementById("img-remote-c"));
+            document.getElementById("st-remote").textContent =
+                "REMOTE " + (a && b && c ? "OK" : "FAIL") +
+                " a=" + document.getElementById("img-remote-a").naturalWidth +
+                " b=" + document.getElementById("img-remote-b").naturalWidth +
+                " c=" + document.getElementById("img-remote-c").naturalWidth;
+            label(document.getElementById("st-local"), document.getElementById("img-local"));
+            label(document.getElementById("st-data"), document.getElementById("img-data"));
+            var face = false;
+            if (document.fonts && document.fonts.check) {
+                face = document.fonts.check("16px RegLocal");
+            }
+            document.getElementById("st-font").textContent = face ? "FONT WOFF2-READY" : "FONT WOFF2-MISSING";
+            window.status = "reg-ready";
+        });
+})();
+</script>
+</body>
+</html>

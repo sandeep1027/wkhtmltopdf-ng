@@ -63,8 +63,7 @@ QByteArray HtmlToImageConverter::convertToBuffer(const QString& input, QString* 
     view.settings()->setAttribute(QWebEngineSettings::JavascriptEnabled, m_settings.enableJavascript);
     view.settings()->setAttribute(QWebEngineSettings::LocalContentCanAccessFileUrls,
                                   m_settings.enableLocalFileAccess);
-    view.settings()->setAttribute(QWebEngineSettings::LocalContentCanAccessRemoteUrls,
-                                  m_settings.enableLocalFileAccess);
+    view.settings()->setAttribute(QWebEngineSettings::LocalContentCanAccessRemoteUrls, true);
 
     QEventLoop loop;
     QImage result;

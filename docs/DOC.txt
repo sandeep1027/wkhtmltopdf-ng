@@ -99,7 +99,8 @@ Render / wait
   --no-print-media-type
   --background / --no-background
   --encoding ENC                local HTML charset (default utf-8)
-  --enable-local-file-access    required for local images, CSS, fonts
+  --enable-local-file-access    required for other local files (images, CSS, fonts)
+                                remote http(s) images already load from a file:// page
   --load-error-handling abort|ignore|skip
   --load-media-error-handling abort|ignore|skip
   --retry N
