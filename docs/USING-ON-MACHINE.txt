@@ -1,0 +1,837 @@
+wkhtmltopdf-ng 0.14.3 — using it on a machine
+=============================================
+
+This is the detailed guide for installing and running wkhtmltopdf-ng on a
+normal machine (desktop, laptop, or server). The binary is linked against
+the operating system's Qt 6 WebEngine. You do not unpack a portable tree
+and you do not ship Chromium next to the binary.
+
+This document is NOT about:
+
+  dist/wkhtmltopdf-ng_0.14.3_linux-amd64.tar.xz
+  dist/wkhtmltopdf-ng_0.14.3_el9-amd64.tar.xz
+  the Windows / macOS portable zip
+
+Those copies of Qt, QtWebEngineProcess, resources/, and qpdf. See
+docs/DOC.txt section 7 and packaging/README.md for that path.
+
+Full flag list:          docs/DOC.txt
+What changed in 0.14.3:  docs/RELEASE.txt
+Short overview:          README.md
+
+
+Minimum versions
+----------------
+
+  wkhtmltopdf-ng     0.14.3          this release
+  Qt 6 WebEngine     6.2             required to build and run
+                     6.8             required for --page-ranges
+  qpdf               10.6            --attach needs 10.6+; older qpdf
+                                     still does compress / overlay / merge
+  CMake              3.16            build only
+  C++ compiler       C++17           build only (g++ 9+ is enough)
+  glibc              2.35            Ubuntu 22.04 / Debian 12 class
+                     2.34            Rocky / Alma 9 if you build there
+  Linux              Ubuntu 22.04    oldest supported machine-install OS
+                     Debian 13       full feature set (Qt 6.8)
+  Windows            10 / 11         64-bit
+  macOS              current         experimental
+
+  Not supported
+    CentOS / RHEL 7     glibc 2.17
+    CentOS / RHEL 8     this Qt 6 stack
+
+  Feature vs Qt
+    Qt 6.2+    HTML -> PDF / image, headers, TOC, --compress
+    Qt 6.8+    --page-ranges
+
+Install those packages for this OS:
+
+  sudo ./scripts/install-deps.sh              # runtime + build tools
+  sudo ./scripts/install-deps.sh --runtime    # run a binary already built here
+  ./scripts/install-deps.sh --check           # verify only
+  ./scripts/install-deps.sh --dry-run         # print packages, do not install
+
+Detects Ubuntu 22.04+, Debian 12+, Rocky / Alma / RHEL 9, Fedora, Arch.
+Refuses CentOS / RHEL 7 and 8.
+
+
+1. Two ways to run this project
+-------------------------------
+
+  Machine install (this document)
+      Build or install the CLI on the same OS that will run it.
+      The OS provides Qt 6 WebEngine, QtWebEngineProcess, fonts, and qpdf.
+      The installed files are small: two binaries plus optional libwkhtmltox.
+      Typical size of the CLI itself: a few megabytes.
+      You must install the Qt runtime packages on every machine that runs it.
+
+  Portable tree (not this document)
+      Unpack a 100–130 MB folder that already contains Qt + Chromium + qpdf.
+      No Qt packages needed on the target.
+      Do not copy only bin/wkhtmltopdf.
+
+Choose machine install when:
+
+  - you control the OS and can install packages (apt / dnf)
+  - the app server already has (or can have) Qt 6 WebEngine
+  - you want a normal /usr/local/bin/wkhtmltopdf-ng on PATH
+  - you are wiring PHP, Python, Node, cron, or systemd on that host
+
+Choose the portable tree when:
+
+  - you cannot install Qt packages
+  - the target is Rocky / Alma 9 and you did not build there
+  - you need a folder you can drop onto another matching glibc host
+
+
+2. What you run after install
+-----------------------------
+
+  wkhtmltopdf-ng      HTML / URL / stdin  ->  PDF
+  wkhtmltoimage-ng    HTML / URL          ->  PNG, JPEG, WebP
+  libwkhtmltox.so     optional C API (wkhtmltopdf_* / wkhtmltoimage_*)
+
+After cmake --install (prefix /usr/local):
+
+  /usr/local/bin/wkhtmltopdf-ng
+  /usr/local/bin/wkhtmltoimage-ng
+  /usr/local/lib/libwkhtmltox.so
+  /usr/local/include/wkhtmltox/wkhtmltox.h
+
+After a local build, before install, the same binaries live in the
+build directory:
+
+  /path/to/wkhtmltopdf-ng/build/wkhtmltopdf-ng
+  /path/to/wkhtmltopdf-ng/build/wkhtmltoimage-ng
+
+Debian packages also add compatibility names (same binaries):
+
+  /usr/local/bin/wkhtmltopdf     ->  wkhtmltopdf-ng
+  /usr/local/bin/wkhtmltoimage   ->  wkhtmltoimage-ng
+
+A machine install does NOT contain:
+
+  lib/libQt6*.so
+  libexec/QtWebEngineProcess
+  resources/v8_context_snapshot.bin
+  plugins/platforms/libqoffscreen.so
+  bin/qpdf
+
+Those come from the OS packages listed in section 4.
+
+
+3. How the machine binary works
+-------------------------------
+
+wkhtmltopdf-ng is a small Qt application. On start it:
+
+  1. Creates a headless Qt application (offscreen QPA plugin).
+  2. Loads the HTML in QWebEngineView (Chromium via Qt WebEngine).
+  3. Waits for the document, images, and document.fonts.ready
+     (default budget 3 seconds; 20 seconds with --no-stop-slow-scripts).
+  4. Calls Chromium printToPdf.
+  5. Runs qpdf for page-number overlays, copies, outline, --compress,
+     encryption, merge / split / insert.
+
+So three OS pieces must exist on the same machine:
+
+  A. Shared Qt 6 libraries (libQt6WebEngineWidgets.so.6 and friends)
+  B. QtWebEngineProcess  — the Chromium helper
+       usual path: /usr/lib/qt6/libexec/QtWebEngineProcess
+  C. qpdf on PATH        — /usr/bin/qpdf
+       needed for --header-*, --footer-*, --copies, --compress,
+       --merge-pdf, --split-pdf, --insert-pdf, outline, encryption
+
+The CLI itself is dynamically linked. Check with:
+
+  ldd $(which wkhtmltopdf-ng) | grep Qt6
+
+You should see libQt6WebEngineCore, libQt6WebEngineWidgets,
+libQt6Widgets, libQt6Gui, libQt6Core, libQt6Network,
+libQt6PrintSupport. "not found" on any of those means the runtime
+packages are missing (section 4).
+
+
+4. Runtime requirements (must be on the machine)
+------------------------------------------------
+
+Always required:
+
+  - glibc new enough for the Qt you linked against
+      Ubuntu 22.04 build  ->  glibc 2.35+  (do not copy to CentOS 7)
+      Debian 13 build     ->  glibc 2.41-class; stay on Debian 13
+  - C++ runtime (libstdc++) from the same OS family
+  - Qt 6.2 or newer with WebEngine Widgets + Core
+  - QtWebEngineProcess (package libqt6webenginecore6-bin)
+  - Qt offscreen QPA plugin (package qt6-qpa-plugins)
+  - qpdf
+  - writable /tmp (Qt and qpdf write temp files)
+  - ca-certificates if the HTML loads https
+  - system fonts if the HTML uses Arial / DejaVu / Liberation / etc.
+
+Optional:
+
+  - network, if the HTML loads remote images, CSS, or fonts
+  - extra font packages (fonts-liberation, fonts-dejavu, fonts-noto)
+  - a display is NOT required
+
+Or let the script pick packages for this OS:
+
+  sudo ./scripts/install-deps.sh --runtime
+
+Debian / Ubuntu — run-time only (binary already built on this distro):
+
+  sudo apt install \
+    libqt6webenginecore6 \
+    libqt6webenginecore6-bin \
+    libqt6webenginewidgets6 \
+    libqt6widgets6 \
+    libqt6gui6 \
+    libqt6core6 \
+    libqt6network6 \
+    libqt6printsupport6 \
+    libqt6webchannel6 \
+    libqt6positioning6 \
+    qt6-qpa-plugins \
+    qpdf \
+    ca-certificates \
+    fonts-dejavu-core \
+    libfontconfig1 \
+    libfreetype6
+
+Debian 13 .deb also declares those as Depends (Qt >= 6.8).
+
+Check that the pieces exist:
+
+  wkhtmltopdf-ng --version
+  # or the build-dir binary:
+  /path/to/build/wkhtmltopdf-ng --version
+
+  which qpdf
+  qpdf --version
+  ls /usr/lib/qt6/libexec/QtWebEngineProcess
+  ls /usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqoffscreen.so
+
+Expected --version line:
+
+  wkhtmltopdf-ng 0.14.3 (Qt WebEngine / Chromium)
+
+
+5. Distro notes
+---------------
+
+  Ubuntu 22.04     Qt 6.2.4. Works. --page-ranges is compiled out.
+                   This is a supported machine-install host.
+  Ubuntu 24.04     Qt 6.4.x unless you add a newer Qt. Works; no
+                   --page-ranges unless Qt is 6.8+.
+  Debian 13        Qt 6.8. Full feature set including --page-ranges.
+                   Official .deb target (amd64 and arm64).
+  Debian 12        Qt 6.4. Build from source works; official .deb is
+                   disabled unless you supply Qt 6.8.
+  Rocky / Alma 9   Prefer the EL9 portable archive, or build on that
+                   distro against its Qt 6 WebEngine packages.
+  CentOS / RHEL 7  Not supported (glibc 2.17, kernel 3.10).
+  CentOS / RHEL 8  Not supported by this Qt 6 stack.
+
+The binary you compile on Ubuntu 22.04 will not run on CentOS 7 even
+if you copy it. Build on the target OS, or use the matching portable
+archive.
+
+Feature vs Qt version:
+
+  Qt 6.2+     convert HTML to PDF / image, headers, TOC, compress
+  Qt 6.8+     --page-ranges (QPageRanges in printToPdf)
+
+
+6. Build-time requirements
+--------------------------
+
+To compile on the machine you also need the -dev packages, CMake, and
+a C++17 compiler.
+
+  sudo ./scripts/install-deps.sh --build
+
+Debian / Ubuntu:
+
+  sudo apt install \
+    qt6-base-dev \
+    qt6-webengine-dev \
+    qt6-webengine-dev-tools \
+    libqt6webenginecore6-bin \
+    qpdf \
+    cmake \
+    ninja-build \
+    g++ \
+    pkg-config
+
+CMake 3.16 or newer. The project finds:
+
+  Qt6 6.2 REQUIRED
+    Core Widgets WebEngineCore WebEngineWidgets PrintSupport Network
+
+
+7. Build from source and install
+--------------------------------
+
+  git clone https://github.com/sandeep1027/wkhtmltopdf-ng
+  cd wkhtmltopdf-ng
+
+  export QT_QPA_PLATFORM=offscreen
+  export QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox
+
+  cmake -S . -B build -G Ninja \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_INSTALL_PREFIX=/usr/local
+  cmake --build build
+  ctest --test-dir build --output-on-failure
+
+  ./build/wkhtmltopdf-ng --version
+  ./build/wkhtmltoimage-ng --version
+
+Install onto PATH:
+
+  sudo cmake --install build
+  sudo ldconfig
+
+That copies:
+
+  /usr/local/bin/wkhtmltopdf-ng
+  /usr/local/bin/wkhtmltoimage-ng
+  /usr/local/lib/libwkhtmltox.so*
+  /usr/local/include/wkhtmltox/wkhtmltox.h
+
+Compatibility names (optional, so existing scripts that call
+"wkhtmltopdf" keep working):
+
+  sudo ln -sf wkhtmltopdf-ng  /usr/local/bin/wkhtmltopdf
+  sudo ln -sf wkhtmltoimage-ng /usr/local/bin/wkhtmltoimage
+
+Without ninja:
+
+  cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+  cmake --build build -j"$(nproc)"
+
+Without installing, you can run the build-dir binary directly:
+
+  /path/to/wkhtmltopdf-ng/build/wkhtmltopdf-ng --version
+
+
+8. Install a Debian package (Debian 13)
+---------------------------------------
+
+Official package targets are debian13-amd64 and debian13-arm64.
+They install into /usr/local and pull the Qt 6.8 runtime via apt.
+
+Build the .deb (needs Docker):
+
+  packaging/build.sh debian13-amd64
+  # writes dist/wkhtmltopdf-ng_0.14.3_amd64.deb
+
+On the Debian 13 machine:
+
+  sudo apt install ./wkhtmltopdf-ng_0.14.3_amd64.deb
+
+apt resolves Qt / qpdf / fonts / ca-certificates for you. After
+install:
+
+  wkhtmltopdf-ng --version
+  wkhtmltopdf --version          # compatibility symlink
+  wkhtmltoimage-ng --version
+
+Do not install that .deb on Ubuntu 22.04. It requires Qt >= 6.8.
+On Ubuntu 22.04 / 24.04 use section 7 (build from source against
+the distro Qt).
+
+
+9. Headless environment (required on servers)
+---------------------------------------------
+
+The CLI starts Qt. On a machine with no monitor (SSH, Docker, cron,
+PHP-FPM, systemd, CI) set:
+
+  export QT_QPA_PLATFORM=offscreen
+  export QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox
+
+Meaning:
+
+  QT_QPA_PLATFORM=offscreen
+      Use the offscreen Qt platform plugin. No X11 / Wayland.
+      The binary also defaults to offscreen if this is unset, but
+      set it explicitly in services so a leftover DISPLAY= does
+      not send Qt looking for an X server.
+
+  QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox
+      Chromium's sandbox does not work as root, in many containers,
+      and in some CI environments. Required there. Harmless on a
+      normal desktop user session.
+
+The process also adds, if missing:
+
+  --disable-gpu
+  --disable-gpu-compositing
+  --disable-dev-shm-usage
+  --disable-seccomp-filter-sandbox
+
+Put the two export lines in one of:
+
+  ~/.bashrc                          interactive SSH
+  /etc/environment                   whole machine
+  the systemd unit Environment=      services
+  the PHP-FPM / Apache / nginx env   web apps
+  the cron line                      scheduled jobs
+  the Docker ENV / docker run -e     containers
+
+Example systemd snippet:
+
+  [Service]
+  Environment=QT_QPA_PLATFORM=offscreen
+  Environment=QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox
+  ExecStart=/usr/local/bin/wkhtmltopdf-ng --enable-local-file-access \
+      /var/lib/app/in.html /var/lib/app/out.pdf
+
+
+10. First conversion (smoke test)
+---------------------------------
+
+  export QT_QPA_PLATFORM=offscreen
+  export QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox
+
+  printf '<h1>ok</h1><p>machine install</p>\n' > /tmp/in.html
+  wkhtmltopdf-ng --enable-local-file-access /tmp/in.html /tmp/out.pdf
+  file /tmp/out.pdf
+  qpdf --show-npages /tmp/out.pdf
+
+You should get a one-page PDF whose first bytes are %PDF.
+
+URL:
+
+  wkhtmltopdf-ng https://example.com /tmp/example.pdf
+
+Image:
+
+  wkhtmltoimage-ng --enable-local-file-access --width 1200 \
+      /tmp/in.html /tmp/shot.png
+
+
+11. Convert a file — typical commands
+-------------------------------------
+
+URL:
+
+  wkhtmltopdf-ng https://example.com out.pdf
+
+Local HTML (remote https images / CSS / fonts are allowed by default):
+
+  wkhtmltopdf-ng input.html out.pdf
+
+Local HTML that also reads other files on disk (images, WOFF2, CSS):
+
+  wkhtmltopdf-ng --enable-local-file-access input.html out.pdf
+
+Stdin / stdout:
+
+  cat input.html | wkhtmltopdf-ng --enable-local-file-access - out.pdf
+  wkhtmltopdf-ng https://example.com - > out.pdf
+
+Smaller PDF (qpdf flate; recommended when the page has gradients):
+
+  wkhtmltopdf-ng --compress input.html out.pdf
+
+Page setup (0.12 short flags work):
+
+  wkhtmltopdf-ng -q -s A4 -O Landscape -T 10mm -B 10mm -L 10mm -R 10mm \
+      --enable-local-file-access input.html out.pdf
+
+Headers / footers (qpdf overlay; tokens [page] [topage] [date] ...):
+
+  wkhtmltopdf-ng --enable-local-file-access \
+      --header-left "Report" --header-right "[page]/[topage]" \
+      --footer-center "Page [page] of [topage]" \
+      input.html out.pdf
+
+Verbose (see each object, load, print, merge):
+
+  wkhtmltopdf-ng -v --enable-local-file-access input.html out.pdf
+
+Existing PDFs (no HTML render; needs qpdf):
+
+  wkhtmltopdf-ng --merge-pdf a.pdf b.pdf combined.pdf
+  wkhtmltopdf-ng --split-pdf --page-ranges 1-2 original.pdf first-two.pdf
+  wkhtmltopdf-ng --insert-pdf extra.pdf --after-page 3 original.pdf out.pdf
+
+
+12. Common options
+------------------
+
+Page:
+
+  -s, --page-size A4|Letter|Legal|...
+  -O, --orientation Portrait|Landscape
+  -T/-R/-B/-L, --margin-top/right/bottom/left LENGTH
+  -d, --dpi DPI                 layout scale = (96/DPI) * zoom  (default 96)
+  -g, --grayscale
+  --zoom FACTOR
+  --viewport-size WxH           default 1024 x page
+  --page-ranges 1-3,5           Qt 6.8+ only
+  --copies N
+
+Wait / JS:
+
+  --javascript-delay MS         extra pause after load (default 200)
+  --window-status VALUE         wait until window.status matches
+  --no-stop-slow-scripts        allow longer image/font waits (20s)
+  -n, --disable-javascript
+
+Files / network:
+
+  --enable-local-file-access    other local files (not required for https)
+  --allow PATH
+  -p, --proxy URL
+  --custom-header NAME:VALUE
+  --load-error-handling abort|ignore|skip
+  --timeout MS
+
+Headers / footers (CLI tokens, qpdf overlay):
+
+  --header-left/center/right TEXT
+  --footer-left/center/right TEXT
+  --header-html / --footer-html FILE
+  Tokens: [page] [topage] [webpage] [date] [title] ...
+
+PDF extras (need qpdf):
+
+  --compress / --compress-level 1-9
+  --optimize-images
+  --linearize
+  --author / --subject / --keywords TEXT
+  --user-password / --owner-password PASS
+
+Logging:
+
+  -q, --quiet
+  -v, --verbose
+  --log-level none|error|warn|info|verbose
+
+wkhtmltopdf 0.12 short flags work:
+
+  -s -O -T -R -B -L -d -g -q -n -p -l -h -H -V
+
+  One letter, space before the value:
+    wkhtmltopdf-ng -s A4 -O Landscape -T 20mm in.html out.pdf
+  Combined letters (-qsg) and glued values (-sA4) are not accepted.
+
+  -v / --verbose is extra (0.12 has no -v).
+
+wkhtmltoimage-ng extras: --width, --height, --quality, --fmt,
+--crop-x/--crop-y/--crop-width/--crop-height, --transparent.
+
+Full list: wkhtmltopdf-ng --help   or   docs/DOC.txt section 4.
+
+
+13. Local files vs remote URLs
+------------------------------
+
+A path such as /var/www/app/tmp/in.html is loaded as file://.
+
+  Remote http(s) images, CSS, fonts
+      Work without --enable-local-file-access.
+
+  Other files on disk (relative images, @font-face WOFF2, local CSS)
+      Need --enable-local-file-access
+      or --allow /path/to/dir
+
+The converter waits after loadFinished for images and
+document.fonts.ready (default up to 3 seconds; 20 seconds with
+--no-stop-slow-scripts). You do not need a large --javascript-delay
+just for images.
+
+Use --javascript-delay or --window-status when page JavaScript
+creates content after load (charts, late innerHTML).
+
+
+14. CSS position:fixed header / footer
+--------------------------------------
+
+position:fixed top/bottom bars print on every page.
+
+They are out of flow. On an automatic page break, body text would
+sit under the footer unless print margins reserve that height.
+
+From 0.14.3 the converter measures those bars and grows
+--margin-top / --margin-bottom before printToPdf so content stops
+above the footer and continues on the next page.
+
+You can still set margins yourself:
+
+  wkhtmltopdf-ng --margin-top 20mm --margin-bottom 20mm input.html out.pdf
+
+Do not use negative body margins to "tuck" content under the bars;
+that will overlap on purpose.
+
+CLI --header-* / --footer-* are a separate qpdf overlay. They do
+not replace CSS position:fixed bars in the HTML.
+
+
+15. Fonts
+---------
+
+System fonts (DejaVu, Liberation, Nimbus, ...) are used when the
+HTML names them and the package is installed.
+
+  sudo apt install fonts-dejavu-core fonts-liberation
+
+Local @font-face (WOFF / WOFF2 / TTF next to the HTML) needs
+--enable-local-file-access. The face loads in the document
+(document.fonts.ready). Chromium print on some Qt 6.2 builds
+embeds a fallback (DejaVu / Liberation) instead of the custom
+file. If printed text must be that exact face, test on the target
+Qt version or use a system-installed font.
+
+Google Fonts / CDN fonts need outbound https. The machine must
+reach the host (firewall, proxy, DNS).
+
+
+16. Permissions and paths
+-------------------------
+
+The process that execs wkhtmltopdf-ng must be able to:
+
+  - read the input HTML
+  - read any local assets (if --enable-local-file-access)
+  - write the output path
+  - write to /tmp  (or $TMPDIR)
+  - execute /usr/bin/qpdf
+  - execute /usr/lib/qt6/libexec/QtWebEngineProcess
+  - load the Qt 6 shared libraries
+  - open outbound https if the HTML uses remote images
+
+Typical web-app layout:
+
+  input:   /var/www/app/tmp/in.html     (www-data readable)
+  assets:  /var/www/app/public/...      (same)
+  output:  /var/www/app/tmp/out.pdf     (www-data writable)
+  tmp:     /tmp                         (sticky, world-writable)
+
+SELinux / AppArmor: if the service cannot exec QtWebEngineProcess
+or qpdf, allow that path. The helper is a separate process, not a
+thread inside wkhtmltopdf-ng.
+
+
+17. Typical application wiring
+------------------------------
+
+Set the two env vars, then exec the binary. Do not rely on a login
+shell's ~/.bashrc from PHP-FPM or systemd.
+
+Shell:
+
+  export QT_QPA_PLATFORM=offscreen
+  export QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox
+  /usr/local/bin/wkhtmltopdf-ng --enable-local-file-access \
+      --page-size A4 --compress \
+      /var/www/app/tmp/in.html /var/www/app/tmp/out.pdf
+
+PHP:
+
+  putenv('QT_QPA_PLATFORM=offscreen');
+  putenv('QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox');
+  $cmd = '/usr/local/bin/wkhtmltopdf-ng --enable-local-file-access'
+       . ' --page-size A4 --compress '
+       . escapeshellarg($in) . ' ' . escapeshellarg($out);
+  exec($cmd, $lines, $code);
+
+Python (subprocess, not a login shell):
+
+  import os, subprocess
+  env = os.environ.copy()
+  env['QT_QPA_PLATFORM'] = 'offscreen'
+  env['QTWEBENGINE_CHROMIUM_FLAGS'] = '--no-sandbox'
+  subprocess.run(
+      ['/usr/local/bin/wkhtmltopdf-ng',
+       '--enable-local-file-access', '--page-size', 'A4', '--compress',
+       in_html, out_pdf],
+      env=env, check=True)
+
+Node:
+
+  const { spawnSync } = require('child_process');
+  spawnSync('/usr/local/bin/wkhtmltopdf-ng', [
+    '--enable-local-file-access', '--page-size', 'A4', '--compress',
+    inHtml, outPdf
+  ], {
+    env: {
+      ...process.env,
+      QT_QPA_PLATFORM: 'offscreen',
+      QTWEBENGINE_CHROMIUM_FLAGS: '--no-sandbox',
+    },
+    stdio: 'inherit',
+  });
+
+Cron (one line, env in the job):
+
+  0 2 * * * QT_QPA_PLATFORM=offscreen QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox \
+    /usr/local/bin/wkhtmltopdf-ng --enable-local-file-access \
+    /var/www/app/daily.html /var/www/app/daily.pdf
+
+Libraries that call a "wkhtmltopdf" binary (pdfkit, wicked_pdf,
+snappy, knp-snappy) work if /usr/local/bin/wkhtmltopdf is the
+symlink from section 7 and the process env has the two variables.
+
+Go wrapper (same API as go-wkhtmltopdf):
+
+  https://github.com/sandeep1027/go-wkhtmltopdf-ng
+
+
+18. C API (libwkhtmltox)
+------------------------
+
+After cmake --install:
+
+  header:  /usr/local/include/wkhtmltox/wkhtmltox.h
+  library: /usr/local/lib/libwkhtmltox.so
+
+Names match wkhtmltopdf 0.12:
+
+  wkhtmltopdf_init, _create_global_settings, _create_object_settings,
+  _add_object, _convert, _get_output
+  wkhtmltoimage_*  (in, out, fmt, screenWidth, quality, crop.*, ...)
+
+The library creates a QApplication if the host has not. The host
+process still needs the same Qt runtime, QtWebEngineProcess, qpdf,
+and the two env vars.
+
+  gcc app.c -lwkhtmltox -o app
+  # or pkg-config if you add a .pc file
+
+See tests/test_capi.c.
+
+
+19. Docker on the same machine (system Qt, not portable)
+--------------------------------------------------------
+
+A container that uses the machine-style binary must install the
+same runtime packages inside the image. Example (Debian 13):
+
+  FROM debian:13
+  RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates fonts-dejavu-core \
+        libqt6webenginecore6 libqt6webenginecore6-bin \
+        libqt6webenginewidgets6 libqt6widgets6 \
+        libqt6gui6 libqt6core6 libqt6network6 \
+        libqt6printsupport6 qt6-qpa-plugins qpdf \
+      && rm -rf /var/lib/apt/lists/*
+  COPY wkhtmltopdf-ng wkhtmltoimage-ng /usr/local/bin/
+  ENV QT_QPA_PLATFORM=offscreen
+  ENV QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox
+  ENTRYPOINT ["wkhtmltopdf-ng"]
+
+Or use the project image:
+
+  packaging/build-image.sh wkhtmltopdf-ng:local
+  docker run --rm -i wkhtmltopdf-ng:local https://example.com - > example.pdf
+
+The image runs as uid 10001 and already sets the offscreen platform.
+
+
+20. Windows and macOS (machine Qt)
+----------------------------------
+
+Windows 10/11:
+
+  Install Qt 6 (6.2+, 6.8 recommended) with WebEngine, and qpdf.
+  Open a VS 2022 x64 Native Tools prompt, then:
+
+    cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+    cmake --build build --config Release
+
+  The resulting wkhtmltopdf-ng.exe still needs the Qt DLLs and
+  QtWebEngineProcess.exe on PATH, plus qpdf.exe. For a folder you
+  can copy, use the portable zip instead
+  (packaging/scripts/package-windows.ps1).
+
+macOS:
+
+  Experimental. Qt WebEngine looks for QtWebEngineProcess inside
+  an app bundle. Prefer packaging/scripts/package-macos.sh.
+  qpdf must be on PATH (brew install qpdf).
+
+
+21. Troubleshooting
+-------------------
+
+  "wkhtmltopdf-ng: error while loading shared libraries: libQt6WebEngine..."
+      Install the Qt 6 WebEngine runtime packages (section 4).
+      Confirm with: ldd $(which wkhtmltopdf-ng) | grep not
+
+  "Could not find QtWebEngineProcess"
+      Install libqt6webenginecore6-bin.
+      Check /usr/lib/qt6/libexec/QtWebEngineProcess.
+
+  "qt.qpa.plugin: Could not find the Qt platform plugin offscreen"
+      Install qt6-qpa-plugins.
+      Check .../qt6/plugins/platforms/libqoffscreen.so.
+
+  Hangs or fails in Docker / as root / PHP-FPM
+      Set QT_QPA_PLATFORM=offscreen and
+      QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox
+      on the process, not only in your login shell.
+
+  Local images or WOFF2 missing
+      Add --enable-local-file-access. Paths are relative to the HTML file.
+
+  Remote https image missing
+      Confirm curl can download the URL (200, image/*).
+      Hotlink-protected hosts can still fail. Default wait is 3s;
+      use --no-stop-slow-scripts for a slow CDN.
+      ca-certificates must be installed.
+
+  Large PDF (many MB) for a small HTML
+      Chromium rasterizes some CSS (gradients, rounded clips) as
+      uncompressed bitmaps. Use --compress.
+
+  Footer overlaps the last lines on a long page
+      CSS position:fixed. 0.14.3+ reserves print margins for those
+      bars. Or set --margin-bottom larger than the footer height.
+
+  --page-ranges does nothing
+      Needs a build against Qt 6.8+. Ubuntu 22.04 Qt 6.2 omits it.
+
+  --header-right "[page]/[topage]" is blank
+      qpdf is missing or not on PATH. which qpdf
+
+  Binary copied from Ubuntu 22.04 to CentOS 7 (or older glibc)
+      Will not run. Build on the target OS or use the matching
+      portable archive. Do not patchelf glibc.
+
+  "wkhtmltopdf" not found, but "wkhtmltopdf-ng" works
+      Create the symlink from section 7, or point the app at
+      /usr/local/bin/wkhtmltopdf-ng.
+
+  Permission denied writing the PDF
+      The service user must own or write the output directory.
+
+  /tmp is noexec or full
+      Qt / Chromium / qpdf need a writable temp dir.
+      export TMPDIR=/var/tmp   (if that filesystem allows exec)
+
+
+22. What you do NOT need
+------------------------
+
+  - the portable tarball / zip
+  - a copy of Chromium or Google Chrome
+  - Xvfb, a desktop session, or a physical monitor
+  - wkhtmltopdf 0.12 or Qt 4 / Qt 5 WebKit
+  - to set --javascript-delay just so remote images finish
+    (0.14.3 waits after loadFinished)
+
+
+23. Related docs
+----------------
+
+  docs/DOC.txt        Full flag list, portable trees, C API, tests
+  docs/RELEASE.txt    What changed in this version
+  README.md           Short overview
+  packaging/README.md Debian packages and portable archives
+  LICENSE / NOTICE    LGPL-3.0

@@ -8,6 +8,8 @@ Version **0.14.3**. License: LGPL-3.0. See [`LICENSE`](LICENSE) and [`NOTICE`](N
 This project is independent and is not affiliated with wkhtmltopdf.org.
 
 Full flag list, packaging, limits, and tests: [`docs/DOC.txt`](docs/DOC.txt).
+Install and run on a normal machine (system Qt, not the portable tree):
+[`docs/USING-ON-MACHINE.txt`](docs/USING-ON-MACHINE.txt).
 
 ## What you get
 
@@ -55,14 +57,18 @@ prints each object, load, print, and merge step.
 
 Needs Qt **6.2+** with WebEngine (page ranges need **6.8+**), `qpdf`, CMake, C++17.
 
-Debian 13:
+```sh
+sudo ./scripts/install-deps.sh          # Qt, qpdf, cmake — picks packages for this OS
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+ctest --test-dir build --output-on-failure
+```
+
+Debian 13 (manual):
 
 ```sh
 sudo apt install qt6-base-dev qt6-webengine-dev qt6-webengine-dev-tools \
   libqt6webenginecore6-bin qpdf cmake ninja-build
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-cmake --build build
-ctest --test-dir build --output-on-failure
 ```
 
 Go wrapper (same API as go-wkhtmltopdf):
@@ -109,8 +115,10 @@ See [`packaging/README.md`](packaging/README.md).
 ## Repository
 
 ```
-src/           CLI, converter, C API
-tests/         fixtures and shell checks
-packaging/     Debian, Docker, Linux/Windows/macOS portable
-docs/DOC.txt   full documentation
+src/                       CLI, converter, C API
+tests/                     fixtures and shell checks
+packaging/                 Debian, Docker, Linux/Windows/macOS portable
+docs/DOC.txt               full flag list, portable trees, C API
+docs/USING-ON-MACHINE.txt  install and run with system Qt
+scripts/install-deps.sh    install Qt / qpdf / cmake for this OS
 ```

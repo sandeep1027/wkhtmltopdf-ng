@@ -216,7 +216,16 @@ wkhtmltoimage-ng extras: --width, --height, --quality, --fmt,
 --crop-x/--crop-y/--crop-width/--crop-height, --transparent.
 
 
-5. Build from source
+5. Using it on a machine (system Qt)
+------------------------------------
+
+The machine binary needs system Qt 6 WebEngine and qpdf. It is not the
+portable tarball. Full install, env, and troubleshooting:
+
+  docs/USING-ON-MACHINE.txt
+
+
+6. Build from source
 --------------------
 
 Requirements:
@@ -239,7 +248,7 @@ Ubuntu 22.04 ships Qt 6.2.4. That build works; page-range printing is
 compiled out unless Qt is 6.8+.
 
 
-6. Portable tree (test on another machine)
+7. Portable tree (test on another machine)
 ------------------------------------------
 
 This is NOT a single static ELF. Copy the whole folder.
@@ -275,7 +284,7 @@ Do not copy only bin/wkhtmltopdf. The wrapper needs lib/, libexec/,
 plugins/, and resources/ (including v8_context_snapshot.bin on Qt 6.6+).
 
 
-7. What will NOT run
+8. What will NOT run
 --------------------
 
   CentOS / RHEL 7          glibc 2.17. Qt 6 WebEngine will not start.
@@ -290,7 +299,7 @@ Use Docker on CentOS 7:
   packaging/run-docker.sh --enable-local-file-access in.html out.pdf
 
 
-8. How this differs from original wkhtmltopdf
+9. How this differs from original wkhtmltopdf
 ---------------------------------------------
 
 Original 0.12.x used a patched Qt 4.8.7 WebKit and wrote PDF itself
@@ -317,7 +326,7 @@ Not available:
   patched-WebKit print extras that Chromium does not expose
 
 
-9. C API
+10. C API
 --------
 
 Header:  wkhtmltox/wkhtmltox.h
@@ -331,7 +340,7 @@ The library creates a QApplication if the host has not.
 See tests/test_capi.c.
 
 
-10. Tests
+11. Tests
 ---------
 
   ctest --test-dir build --output-on-failure
@@ -346,7 +355,7 @@ Fixtures: tests/test_data/
 Typical rendered PDFs (local, not in git): /tmp/wkhtmltopdf-ng-pdfs/
 
 
-11. Fonts and JavaScript
+12. Fonts and JavaScript
 ------------------------
 
 Local @font-face and embedded fonts work with --enable-local-file-access.
@@ -357,7 +366,7 @@ Wait for JS with --javascript-delay and/or --window-status.
 Default delay is 200 ms. Heavy pages: 200-400 ms plus window.status.
 
 
-12. Source layout
+13. Source layout
 -----------------
 
   src/main.cpp, src/image/main.cpp
