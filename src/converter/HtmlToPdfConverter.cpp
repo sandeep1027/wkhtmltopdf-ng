@@ -193,6 +193,49 @@ QString waitForPaintJavascript()
         "return window.__wkhtmltopdfNgPaintReady&&images&&fonts;})()");
 }
 
+// CSS position:fixed top/bottom bars are out of flow. Chromium still paginates
+// body text into that space, so auto page-breaks overlap the footer. Grow the
+// print margins to reserve that height (same idea as --header/--footer).
+QString measureFixedChromeJavascript()
+{
+    return QStringLiteral(
+        "(function(){function mm(px){return px*25.4/96;}"
+        "var topPx=0,bottomPx=0;"
+        "var vh=window.innerHeight||document.documentElement.clientHeight||0;"
+        "Array.prototype.forEach.call(document.body?document.body.querySelectorAll('*'):[],function(el){"
+        "var s=getComputedStyle(el);"
+        "if(s.position!=='fixed')return;"
+        "if(s.display==='none'||s.visibility==='hidden')return;"
+        "var r=el.getBoundingClientRect();"
+        "if(r.width<=0||r.height<=0)return;"
+        "var top=parseFloat(s.top), bottom=parseFloat(s.bottom);"
+        "if(s.top!=='auto'&&!isNaN(top)&&top<=1)topPx=Math.max(topPx,r.height+Math.max(0,top));"
+        "else if(r.top<=1)topPx=Math.max(topPx,r.bottom);"
+        "if(s.bottom!=='auto'&&!isNaN(bottom)&&bottom<=1)bottomPx=Math.max(bottomPx,r.height+Math.max(0,bottom));"
+        "else if(vh&&r.bottom>=vh-1)bottomPx=Math.max(bottomPx,vh-r.top);"
+        "});"
+        "return{topMm:mm(topPx),bottomMm:mm(bottomPx)};})()");
+}
+
+void applyFixedChromeMargins(GlobalSettings* global, const QVariantMap& measured)
+{
+    if (!global) return;
+    const double gapMm = 5.0;
+    const double topMm = measured.value(QStringLiteral("topMm")).toDouble();
+    const double bottomMm = measured.value(QStringLiteral("bottomMm")).toDouble();
+    QMarginsF margins = global->pageLayout.margins(QPageLayout::Millimeter);
+    bool changed = false;
+    if (topMm > 0.5 && margins.top() < topMm + gapMm) {
+        margins.setTop(topMm + gapMm);
+        changed = true;
+    }
+    if (bottomMm > 0.5 && margins.bottom() < bottomMm + gapMm) {
+        margins.setBottom(bottomMm + gapMm);
+        changed = true;
+    }
+    if (changed) global->pageLayout.setMargins(margins);
+}
+
 QString loadErrorPolicy(const ObjectSettings& object)
 {
     const QString policy = object.loadErrorHandling.trimmed().toLower();
@@ -986,6 +1029,7 @@ bool HtmlToPdfConverter::convertDocuments(const QList<ObjectSettings>& inputs, c
     }
 
     std::function<void()> printPage;
+    std::function<void()> beginPrint;
     std::function<void()> waitForWindowStatus;
     std::function<void()> dumpOutlineThenWait;
     std::function<void()> applyPrintScale;
@@ -1128,9 +1172,7 @@ bool HtmlToPdfConverter::convertDocuments(const QList<ObjectSettings>& inputs, c
 #endif
     };
 
-    printPage = [&]() {
-        if (printStarted) return;
-        printStarted = true;
+    beginPrint = [&]() {
         if (m_global.logLevel != QStringLiteral("verbose") || !object.enableJavascript) {
             startPrint();
             return;
@@ -1140,6 +1182,22 @@ bool HtmlToPdfConverter::convertDocuments(const QList<ObjectSettings>& inputs, c
             logAt(m_global, 4, QStringLiteral("Renderer diagnostics: %1")
                  .arg(QString::fromUtf8(json.toJson(QJsonDocument::Compact))));
             startPrint();
+        });
+    };
+
+    printPage = [&]() {
+        if (printStarted) return;
+        printStarted = true;
+        if (!object.enableJavascript) {
+            beginPrint();
+            return;
+        }
+        page.runJavaScript(measureFixedChromeJavascript(), [&](const QVariant& value) {
+            applyFixedChromeMargins(&m_global, value.toMap());
+            const QMarginsF margins = m_global.pageLayout.margins(QPageLayout::Millimeter);
+            logAt(m_global, 4, QStringLiteral("Print margins mm T=%1 R=%2 B=%3 L=%4")
+                 .arg(margins.top()).arg(margins.right()).arg(margins.bottom()).arg(margins.left()));
+            beginPrint();
         });
     };
 

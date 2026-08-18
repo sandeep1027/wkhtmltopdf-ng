@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>validate thead</title>
+<style>
+@page { size: A4; margin: 15mm; }
+body { margin: 0; font-family: Arial, sans-serif; font-size: 11pt; color: #111; }
+h1 { font-size: 16pt; margin: 0 0 10px; }
+table { width: 100%; border-collapse: collapse; }
+thead { display: table-header-group; }
+th {
+    background: #0f172a;
+    color: #f8fafc;
+    text-align: left;
+    padding: 8px 10px;
+    font-size: 11pt;
+}
+td { border-bottom: 1px solid #cbd5e1; padding: 10px; }
+tr { break-inside: avoid; page-break-inside: avoid; }
+</style>
+</head>
+<body>
+<h1>THEAD-REPEAT-TEST</h1>
+<table>
+    <thead>
+        <tr><th>COL-A</th><th>COL-B</th><th>COL-C</th><th>COL-D</th></tr>
+    </thead>
+    <tbody id="body"></tbody>
+</table>
+<script>
+var tbody = document.getElementById("body");
+for (var i = 1; i <= 60; i++) {
+    var tr = document.createElement("tr");
+    tr.innerHTML = "<td>ROW-" + i + "</td><td>SKU-" + (2000 + i) +
+        "</td><td>Item name " + i + "</td><td>$" + (i * 7) + "</td>";
+    tbody.appendChild(tr);
+}
+window.status = "thead-ready";
+</script>
+</body>
+</html>

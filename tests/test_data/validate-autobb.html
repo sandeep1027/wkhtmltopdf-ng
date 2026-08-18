@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>auto page-break vs fixed footer</title>
+<style>
+html, body { margin: 0; padding: 0; font-family: Arial, sans-serif; font-size: 12pt; color: #111; }
+.header {
+    position: fixed; top: 0; left: 0; right: 0; height: 14mm;
+    background: #1d4ed8; color: #fff; z-index: 20;
+    display: flex; align-items: center; padding: 0 12px;
+}
+.footer {
+    position: fixed; bottom: 0; left: 0; right: 0; height: 14mm;
+    background: #b91c1c; color: #fff; z-index: 20;
+    display: flex; align-items: center; padding: 0 12px;
+}
+main { padding: 18mm 12px 18mm; }
+p { margin: 0 0 8px; line-height: 1.45; }
+</style>
+</head>
+<body>
+<div class="header">AUTO-HEADER</div>
+<div class="footer">AUTO-FOOTER</div>
+<main id="main"></main>
+<script>
+var main = document.getElementById("main");
+for (var i = 1; i <= 80; i++) {
+    var p = document.createElement("p");
+    p.textContent = "LINE-" + i + " flowing paragraph used to force an automatic page break.";
+    main.appendChild(p);
+}
+window.status = "flow-ready";
+</script>
+</body>
+</html>

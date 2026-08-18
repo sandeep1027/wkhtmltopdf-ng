@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>validate local woff2</title>
+<style>
+@font-face {
+    font-family: "PDFTestFont";
+    src: url("assets/reg-font.woff2") format("woff2");
+    font-weight: 400;
+    font-display: block;
+}
+@page { size: A4; margin: 18mm; }
+body { margin: 0; color: #111; }
+.fallback { font-family: Arial, Helvetica, sans-serif; font-size: 28pt; margin: 12px 0; }
+.custom { font-family: "PDFTestFont", "Courier New", monospace; font-size: 28pt; margin: 12px 0; }
+.meta { font-family: monospace; font-size: 11pt; }
+</style>
+</head>
+<body>
+<p class="fallback">FALLBACK Arial: ABCDEFG 12345</p>
+<p class="custom" id="sample">CUSTOM WOFF2: ABCDEFG 12345</p>
+<p class="meta" id="st">FONT-PENDING</p>
+<script>
+(function () {
+    var ready = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
+    ready.then(function () {
+        var ok = document.fonts && document.fonts.check && document.fonts.check("28px PDFTestFont");
+        document.getElementById("st").textContent = ok ? "FONT-WOFF2-READY" : "FONT-WOFF2-MISSING";
+        window.status = ok ? "woff2-ready" : "woff2-missing";
+    }).catch(function (err) {
+        document.getElementById("st").textContent = "FONT-WOFF2-ERROR " + err;
+        window.status = "woff2-missing";
+    });
+})();
+</script>
+</body>
+</html>

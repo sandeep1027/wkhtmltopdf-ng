@@ -218,6 +218,16 @@ if(EXISTS "/usr/lib/qt6/libexec/QtWebEngineProcess")
             $<TARGET_FILE:wkhtmltopdf-ng>
             ${CMAKE_CURRENT_SOURCE_DIR}/test_data
             ${CMAKE_CURRENT_BINARY_DIR}/reg-next-check)
+    add_test(NAME wkhtmltopdf-ng-validate-final-check
+        COMMAND /bin/bash ${CMAKE_CURRENT_SOURCE_DIR}/validate_final.sh
+            $<TARGET_FILE:wkhtmltopdf-ng>
+            ${CMAKE_CURRENT_SOURCE_DIR}/test_data
+            ${CMAKE_CURRENT_BINARY_DIR}/validate-final-check)
+    add_test(NAME wkhtmltopdf-ng-validate-autobb-check
+        COMMAND /bin/bash ${CMAKE_CURRENT_SOURCE_DIR}/validate_autobb.sh
+            $<TARGET_FILE:wkhtmltopdf-ng>
+            ${CMAKE_CURRENT_SOURCE_DIR}/test_data
+            ${CMAKE_CURRENT_BINARY_DIR}/validate-autobb-check)
     set_tests_properties(wkhtmltopdf-ng-dpi wkhtmltopdf-ng-smart-shrinking
         wkhtmltopdf-ng-links wkhtmltopdf-ng-links-no-external
         wkhtmltopdf-ng-links-no-internal wkhtmltopdf-ng-links-check
@@ -227,7 +237,8 @@ if(EXISTS "/usr/lib/qt6/libexec/QtWebEngineProcess")
         wkhtmltopdf-ng-heavy-cdn-check
         wkhtmltopdf-ng-modern-css-js wkhtmltopdf-ng-modern-css-js-check
         wkhtmltopdf-ng-print-layout-check wkhtmltopdf-ng-remote-images-check
-        wkhtmltopdf-ng-reg-next-check
+        wkhtmltopdf-ng-reg-next-check wkhtmltopdf-ng-validate-final-check
+        wkhtmltopdf-ng-validate-autobb-check
         PROPERTIES
             ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox"
             TIMEOUT 60)
@@ -236,7 +247,8 @@ if(EXISTS "/usr/lib/qt6/libexec/QtWebEngineProcess")
         wkhtmltopdf-ng-js-font-check wkhtmltopdf-ng-js-images-check
         wkhtmltopdf-ng-heavy-cdn-check wkhtmltopdf-ng-modern-css-js-check
         wkhtmltopdf-ng-print-layout-check wkhtmltopdf-ng-remote-images-check
-        wkhtmltopdf-ng-reg-next-check
+        wkhtmltopdf-ng-reg-next-check wkhtmltopdf-ng-validate-final-check
+        wkhtmltopdf-ng-validate-autobb-check
         PROPERTIES TIMEOUT 180)
 
     add_test(NAME wkhtmltoimage-ng-png
