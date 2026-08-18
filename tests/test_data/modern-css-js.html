@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Modern CSS + JS fixture</title>
+<style>
+  :root { --accent: #2457d6; --pad: clamp(8px, 2vw, 24px); }
+  * { box-sizing: border-box; }
+  body { font-family: sans-serif; margin: 24px; color: #172033; font-size: 14px; }
+  h1 { font-size: 20px; }
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .card { border: 2px solid var(--accent); border-radius: 8px; padding: var(--pad); aspect-ratio: 2 / 1; }
+  .card:has(.special) { border-color: #0a7d3e; }
+  .flexrow { display: flex; gap: 20px; margin-top: 16px; }
+  .flexrow span { white-space: nowrap; }
+  .container { container-type: inline-size; margin-top: 16px; }
+  @container (min-width: 100px) { .container .inner { color: #0a7d3e; } }
+  .nested {
+    margin-top: 16px;
+    .nested-child { font-weight: bold; }
+  }
+  pre { margin-top: 16px; border-top: 1px solid #ccc; padding-top: 8px; font-size: 11px; }
+</style>
+</head>
+<body>
+<h1>Modern CSS + JS</h1>
+<div class="grid" id="grid">
+  <div class="card">CSS Grid cell 1</div>
+  <div class="card">CSS Grid cell 2</div>
+</div>
+<div class="card" id="has-card"><span class="special">:has() target</span></div>
+<div class="flexrow"><span id="fa">flexA</span><span id="fb">flexB</span></div>
+<div class="container"><div class="inner" id="cq-inner">Container query text</div></div>
+<div class="nested"><div class="nested-child" id="nest-child">CSS nesting text</div></div>
+<pre id="status">MODERN-CSS-JS-PENDING</pre>
+<script>
+(async function () {
+  const results = [];
+  const result = (name, ok) => results.push(name + ":" + (ok ? "PASS" : "FAIL"));
+  const support = (name, ok) => results.push(name + ":" + (ok ? "SUPPORTED" : "UNSUPPORTED"));
+  function tier2(name, test, available) {
+    if (!available) { results.push(name + ":UNSUPPORTED"); return; }
+    let ok = false;
+    try { ok = test(); } catch (e) { ok = false; }
+    results.push(name + ":" + (ok ? "PASS" : "FAIL"));
+  }
+  try {
+    // --- Tier 1: ES2020 (Chromium 90 baseline, i.e. Qt 6.2) ---
+    const obj = { a: { b: 42 } };
+    result("JS-OPTCHAIN", obj?.a?.b === 42 && obj?.x?.y === undefined);
+    result("JS-NULLISH", (null ?? "fb") === "fb" && (0 ?? "x") === 0);
+    let v = 1; v ||= 2; v &&= 3; v ??= 9;
+    result("JS-LOGASSIGN", v === 3);
+    result("JS-REPLACEALL", "a-b-c".replaceAll("-", "_") === "a_b_c");
+    const anyVal = await Promise.any([Promise.resolve(7)]);
+    result("JS-PROMISEANY", anyVal === 7);
+    result("JS-INTL", new Intl.NumberFormat("en", { notation: "compact" }).format(1234) === "1.2K");
+
+    // --- Tier 2: newer JS. Each feature reports PASS/FAIL/UNSUPPORTED;
+    // --- the check script enforces the per-feature Chromium minimum. ---
+    tier2("JS-AT", () => [10, 20, 30].at(-1) === 30, typeof [].at === "function");
+    tier2("JS-HASOWN", () => Object.hasOwn({ k: 1 }, "k") && !Object.hasOwn({}, "k"),
+          typeof Object.hasOwn === "function");
+    tier2("JS-ERRORCAUSE", () => {
+      let cause = null;
+      try { throw new Error("boom", { cause: "root" }); } catch (e) { cause = e.cause; }
+      return cause === "root";
+    }, (function () {
+      try { return new Error("x", { cause: 1 }).cause === 1; } catch (e) { return false; }
+    })());
+    tier2("JS-FINDLAST", () => [1, 2, 3, 4].findLast((x) => x % 2 === 1) === 3,
+          typeof [].findLast === "function");
+    tier2("JS-CLONE", () => structuredClone({ k: [1, 2] }).k[1] === 2,
+          typeof structuredClone === "function");
+    tier2("JS-TOSORTED", () => JSON.stringify([3, 1, 2].toSorted()) === "[1,2,3]",
+          typeof [].toSorted === "function");
+
+    // --- CSS layout geometry (tier 1: Grid, clamp(), aspect-ratio, flex gap) ---
+    const gridEl = document.getElementById("grid");
+    const cellRects = Array.from(gridEl.querySelectorAll(".card"))
+      .map((el) => el.getBoundingClientRect());
+    const gridRect = gridEl.getBoundingClientRect();
+    const twoCol = cellRects.length === 2 &&
+                   cellRects[1].left > cellRects[0].right &&
+                   cellRects[0].right <= gridRect.left + gridRect.width * 0.8;
+    results.push("GRID:" + (twoCol ? "2COL" : "STACKED"));
+    const padTop = parseFloat(getComputedStyle(gridEl.querySelector(".card")).paddingTop);
+    result("CLAMP", padTop >= 8 && padTop <= 24);
+    const ratio = cellRects[0].height / cellRects[0].width;
+    result("ASPECT", ratio >= 0.4 && ratio <= 0.62);
+    const fa = document.getElementById("fa").getBoundingClientRect();
+    const fb = document.getElementById("fb").getBoundingClientRect();
+    result("FLEX-GAP", fb.left - fa.right >= 10);
+
+    // --- CSS tier 2: :has(), container queries, nesting ---
+    support("HAS", getComputedStyle(document.getElementById("has-card")).borderColor === "rgb(10, 125, 62)");
+    support("CONTAINER", getComputedStyle(document.getElementById("cq-inner")).color === "rgb(10, 125, 62)");
+    support("NESTING", getComputedStyle(document.getElementById("nest-child")).fontWeight === "700");
+
+    const m = navigator.userAgent.match(/Chrome\/(\d+)/);
+    results.push("ENGINE:CHROME-" + (m ? m[1] : "UNKNOWN"));
+    document.getElementById("status").textContent =
+      results.join("\n") + "\nMODERN-CSS-JS-READY";
+    window.status = "modern-css-js-done";
+  } catch (err) {
+    document.getElementById("status").textContent = "JS-FATAL " + err;
+    window.status = "modern-css-js-done";
+  }
+})();
+</script>
+</body>
+</html>

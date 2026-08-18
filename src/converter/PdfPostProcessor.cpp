@@ -759,7 +759,7 @@ bool pdfNeedsDocumentExtras(const GlobalSettings& global)
 {
     return !global.userPassword.isEmpty() || !global.ownerPassword.isEmpty() ||
         global.linearize || !global.author.isEmpty() || !global.subject.isEmpty() ||
-        !global.keywords.isEmpty();
+        !global.keywords.isEmpty() || !global.attachments.isEmpty();
 }
 
 void remapOutlinePages(QList<OutlineEntry>* entries, int actualPages)
@@ -786,7 +786,8 @@ bool applyPdfDocumentExtras(const QString& inputPath, const QString& outputPath,
         arguments << QStringLiteral("--encrypt") << user << owner << QStringLiteral("256")
                   << QStringLiteral("--");
     }
-    if (arguments.isEmpty()) {
+    const bool hasAttachments = !global.attachments.isEmpty();
+    if (arguments.isEmpty() && !hasAttachments) {
         if (inputPath == outputPath) return true;
         QFile::remove(outputPath);
         if (QFile::copy(inputPath, outputPath)) return true;
@@ -794,6 +795,49 @@ bool applyPdfDocumentExtras(const QString& inputPath, const QString& outputPath,
         const QByteArray data = readAllFile(inputPath, &ok);
         return ok && writeAllFile(outputPath, data, error);
     }
-    arguments << inputPath << outputPath;
+
+    // Attachments run as a separate pass (qpdf requires its attachment
+    // options to end with --, which does not compose cleanly with --encrypt),
+    // and they must run FIRST so the later linearize/encrypt pass reads the
+    // attachment-enriched, still-unencrypted PDF.
+    QString currentInput = inputPath;
+    QString currentOutput = outputPath;
+    QTemporaryFile intermediate(QDir::tempPath() + QStringLiteral("/wkhtmltopdf-ng-extras-XXXXXX.pdf"));
+    if (hasAttachments) {
+        if (!intermediate.open()) {
+            if (error) *error = intermediate.errorString();
+            return false;
+        }
+        currentOutput = intermediate.fileName();
+        intermediate.close();
+        QStringList attachArguments;
+        for (const QString& attachment : global.attachments) {
+            // Space-separated form: accepted by qpdf 10.6+ and 11 (the
+            // "--add-attachment=FILE" form is 11-only in some builds).
+            attachArguments << QStringLiteral("--add-attachment") << attachment;
+        }
+        attachArguments << QStringLiteral("--") << currentInput << currentOutput;
+        if (!runQpdf(attachArguments, nullptr, error)) return false;
+        currentInput = currentOutput;
+        currentOutput = outputPath;
+    }
+
+    if (arguments.isEmpty()) {
+        if (currentInput == currentOutput) return true;
+        QFile::remove(currentOutput);
+        if (QFile::copy(currentInput, currentOutput)) return true;
+        bool ok = false;
+        const QByteArray data = readAllFile(currentInput, &ok);
+        if (!ok) {
+            if (error) *error = QStringLiteral("cannot read PDF output");
+            return false;
+        }
+        QString writeError;
+        const bool written = writeAllFile(currentOutput, data, &writeError);
+        if (!written && error) *error = writeError;
+        return written;
+    }
+
+    arguments << currentInput << currentOutput;
     return runQpdf(arguments, nullptr, error);
 }

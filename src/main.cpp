@@ -14,26 +14,11 @@ namespace {
 constexpr const char* version = WKHTMLTOPDF_NG_VERSION;
 }
 
-int processArguments(QApplication& application, const QStringList& args)
+int runConvert(QApplication& application, const ParsedArguments& arguments)
 {
-    const ParsedArguments arguments = ArgParser::parse(args);
-    if (arguments.help) {
-        QTextStream(stdout) << ArgParser::usage();
-        return 0;
-    }
-    if (arguments.version) {
-        QTextStream(stdout) << "wkhtmltopdf-ng " << version
-                            << " (Qt WebEngine / Chromium)\n";
-        return 0;
-    }
     if (arguments.global.dumpDefaultTocXsl) {
         QTextStream(stdout) << defaultTocXsl();
         return 0;
-    }
-    if (!arguments.error.isEmpty()) {
-        QTextStream(stderr) << "wkhtmltopdf-ng: " << arguments.error << "\n\n"
-                            << ArgParser::usage();
-        return 2;
     }
 
     if (arguments.global.pdfEdit != PdfEditMode::None) {
@@ -66,6 +51,26 @@ int processArguments(QApplication& application, const QStringList& args)
     return 0;
 }
 
+int processArguments(QApplication& application, const QStringList& args)
+{
+    const ParsedArguments arguments = ArgParser::parse(args);
+    if (arguments.help) {
+        QTextStream(stdout) << ArgParser::usage();
+        return 0;
+    }
+    if (arguments.version) {
+        QTextStream(stdout) << "wkhtmltopdf-ng " << version
+                            << " (Qt WebEngine / Chromium)\n";
+        return 0;
+    }
+    if (!arguments.error.isEmpty()) {
+        QTextStream(stderr) << "wkhtmltopdf-ng: " << arguments.error << "\n\n"
+                            << ArgParser::usage();
+        return 2;
+    }
+    return runConvert(application, arguments);
+}
+
 int main(int argc, char* argv[])
 {
     prepareHeadlessQt(argc, argv);
@@ -80,16 +85,16 @@ int main(int argc, char* argv[])
     application.setApplicationVersion(QString::fromLatin1(version));
 
     ParsedArguments initial = ArgParser::parse(cliArgs);
-    if (initial.help || initial.version || !initial.error.isEmpty()) {
-        if (initial.help) {
-            QTextStream(stdout) << ArgParser::usage();
-            return 0;
-        }
-        if (initial.version) {
-            QTextStream(stdout) << "wkhtmltopdf-ng " << version
-                                << " (Qt WebEngine / Chromium)\n";
-            return 0;
-        }
+    if (initial.help) {
+        QTextStream(stdout) << ArgParser::usage();
+        return 0;
+    }
+    if (initial.version) {
+        QTextStream(stdout) << "wkhtmltopdf-ng " << version
+                            << " (Qt WebEngine / Chromium)\n";
+        return 0;
+    }
+    if (!initial.error.isEmpty()) {
         QTextStream(stderr) << "wkhtmltopdf-ng: " << initial.error << "\n\n"
                             << ArgParser::usage();
         return 2;
@@ -108,5 +113,5 @@ int main(int argc, char* argv[])
         return exitCode;
     }
 
-    return processArguments(application, cliArgs);
+    return runConvert(application, initial);
 }

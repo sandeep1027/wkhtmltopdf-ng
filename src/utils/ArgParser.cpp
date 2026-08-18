@@ -7,6 +7,34 @@
 
 namespace {
 
+// wkhtmltopdf 0.12 short options. -v/--verbose is extra (0.12 has no -v).
+QString expandOption(const QString& argument)
+{
+    if (argument.size() != 2 || argument.at(0) != QLatin1Char('-') ||
+        argument.at(1) == QLatin1Char('-')) {
+        return argument;
+    }
+    switch (argument.at(1).toLatin1()) {
+    case 's': return QStringLiteral("--page-size");
+    case 'O': return QStringLiteral("--orientation");
+    case 'T': return QStringLiteral("--margin-top");
+    case 'R': return QStringLiteral("--margin-right");
+    case 'B': return QStringLiteral("--margin-bottom");
+    case 'L': return QStringLiteral("--margin-left");
+    case 'd': return QStringLiteral("--dpi");
+    case 'g': return QStringLiteral("--grayscale");
+    case 'q': return QStringLiteral("--quiet");
+    case 'n': return QStringLiteral("--disable-javascript");
+    case 'p': return QStringLiteral("--proxy");
+    case 'l': return QStringLiteral("--lowquality");
+    case 'h': return QStringLiteral("--help");
+    case 'H': return QStringLiteral("--extended-help");
+    case 'V': return QStringLiteral("--version");
+    case 'v': return QStringLiteral("--verbose");
+    default: return argument;
+    }
+}
+
 bool needsValue(const QString& option)
 {
     return option == QStringLiteral("--page-size") || option == QStringLiteral("--orientation") ||
@@ -40,6 +68,7 @@ bool needsValue(const QString& option)
             option == QStringLiteral("--keywords") ||
             option == QStringLiteral("--user-password") || option == QStringLiteral("--owner-password") ||
             option == QStringLiteral("--watermark") ||
+            option == QStringLiteral("--dump-info") || option == QStringLiteral("--attach") ||
             option == QStringLiteral("--header-on") || option == QStringLiteral("--footer-on") ||
             option == QStringLiteral("--retry") || option == QStringLiteral("--timeout") ||
             option == QStringLiteral("--ssl-crt-path") || option == QStringLiteral("--ssl-key-path") ||
@@ -60,7 +89,8 @@ bool isGlobalOnly(const QString& option)
            option == QStringLiteral("--title") || option == QStringLiteral("--copies") ||
            option == QStringLiteral("--collate") || option == QStringLiteral("--no-collate") ||
            option == QStringLiteral("--grayscale") || option == QStringLiteral("--lowquality") ||
-           option == QStringLiteral("--quiet") || option == QStringLiteral("--outline") ||
+           option == QStringLiteral("--quiet") || option == QStringLiteral("--verbose") ||
+           option == QStringLiteral("--outline") ||
            option == QStringLiteral("--no-outline") || option == QStringLiteral("--outline-depth") ||
            option == QStringLiteral("--dump-outline") || option == QStringLiteral("--page-offset") ||
            option == QStringLiteral("--page-ranges") ||
@@ -76,6 +106,7 @@ bool isGlobalOnly(const QString& option)
            option == QStringLiteral("--keywords") ||
            option == QStringLiteral("--user-password") || option == QStringLiteral("--owner-password") ||
            option == QStringLiteral("--linearize") || option == QStringLiteral("--watermark") ||
+           option == QStringLiteral("--dump-info") || option == QStringLiteral("--attach") ||
            option == QStringLiteral("--no-header-on-first") || option == QStringLiteral("--skip-first-header") ||
            option == QStringLiteral("--header-on") || option == QStringLiteral("--footer-on") ||
            option == QStringLiteral("--retry") || option == QStringLiteral("--timeout") ||
@@ -134,7 +165,16 @@ void applyCoverDefaults(ObjectSettings* object)
 
 bool applyFlag(const QString& argument, GlobalSettings* global, ObjectSettings* object)
 {
-    if (argument == QStringLiteral("--quiet")) { global->quiet = true; return true; }
+    if (argument == QStringLiteral("--quiet")) {
+        global->quiet = true;
+        global->logLevel = QStringLiteral("none");
+        return true;
+    }
+    if (argument == QStringLiteral("--verbose")) {
+        global->quiet = false;
+        global->logLevel = QStringLiteral("verbose");
+        return true;
+    }
     if (argument == QStringLiteral("--no-outline")) { global->outlineEnabled = false; return true; }
     if (argument == QStringLiteral("--outline")) { global->outlineEnabled = true; return true; }
     if (argument == QStringLiteral("--grayscale")) { global->grayscale = true; return true; }
@@ -180,6 +220,8 @@ bool applyFlag(const QString& argument, GlobalSettings* global, ObjectSettings* 
     if (argument == QStringLiteral("--toc")) { object->toc = true; return true; }
     if (argument == QStringLiteral("--toc-use-dotted-lines")) { object->tocUseDottedLines = true; return true; }
     if (argument == QStringLiteral("--no-toc-use-dotted-lines")) { object->tocUseDottedLines = false; return true; }
+    if (argument == QStringLiteral("--toc-page-numbers")) { object->tocPageNumbers = true; return true; }
+    if (argument == QStringLiteral("--no-toc-page-numbers")) { object->tocPageNumbers = false; return true; }
     if (argument == QStringLiteral("--toc-forward-links")) { object->tocForwardLinks = true; return true; }
     if (argument == QStringLiteral("--no-toc-forward-links")) { object->tocForwardLinks = false; return true; }
     if (argument == QStringLiteral("--disable-toc-links")) { object->tocForwardLinks = false; return true; }
@@ -268,10 +310,26 @@ bool applyValue(const QString& argument, const QString& value, GlobalSettings* g
     else if (argument == QStringLiteral("--page-height") || argument == QStringLiteral("--paperheight"))
         *ok = global->set("size.height", value);
     else if (argument == QStringLiteral("--title")) global->documentTitle = value;
-    else if (argument == QStringLiteral("--header-spacing")) { object->headerSpacing = value.toDouble(ok); }
-    else if (argument == QStringLiteral("--footer-spacing")) { object->footerSpacing = value.toDouble(ok); }
-    else if (argument == QStringLiteral("--header-font-size")) { object->headerFontSize = value.toInt(ok); }
-    else if (argument == QStringLiteral("--footer-font-size")) { object->footerFontSize = value.toInt(ok); }
+    else if (argument == QStringLiteral("--header-spacing")) {
+        const double v = value.toDouble(ok);
+        *ok = *ok && v >= 0.0;
+        if (*ok) object->headerSpacing = v;
+    }
+    else if (argument == QStringLiteral("--footer-spacing")) {
+        const double v = value.toDouble(ok);
+        *ok = *ok && v >= 0.0;
+        if (*ok) object->footerSpacing = v;
+    }
+    else if (argument == QStringLiteral("--header-font-size")) {
+        const int v = value.toInt(ok);
+        *ok = *ok && v >= 1;
+        if (*ok) object->headerFontSize = v;
+    }
+    else if (argument == QStringLiteral("--footer-font-size")) {
+        const int v = value.toInt(ok);
+        *ok = *ok && v >= 1;
+        if (*ok) object->footerFontSize = v;
+    }
     else if (argument == QStringLiteral("--header-font-name")) object->headerFontName = value;
     else if (argument == QStringLiteral("--footer-font-name")) object->footerFontName = value;
     else if (argument == QStringLiteral("--header-on")) *ok = global->set("headerOn", value);
@@ -296,7 +354,11 @@ bool applyValue(const QString& argument, const QString& value, GlobalSettings* g
     }
     else if (argument == QStringLiteral("--user-style-sheet")) object->userStyleSheet = value;
     else if (argument == QStringLiteral("--encoding")) object->encoding = value;
-    else if (argument == QStringLiteral("--zoom")) object->zoom = value.toDouble(ok);
+    else if (argument == QStringLiteral("--zoom")) {
+        const double v = value.toDouble(ok);
+        *ok = *ok && v > 0.0;
+        if (*ok) object->zoom = v;
+    }
     else if (argument == QStringLiteral("--viewport-size"))
         *ok = object->set("viewportSize", value);
     else if (argument == QStringLiteral("--load-error-handling"))
@@ -311,7 +373,11 @@ bool applyValue(const QString& argument, const QString& value, GlobalSettings* g
     else if (argument == QStringLiteral("--toc-header-text")) object->tocHeaderText = value;
     else if (argument == QStringLiteral("--toc-caption-text")) object->tocCaptionText = value;
     else if (argument == QStringLiteral("--toc-level-indentation")) object->tocLevelIndentation = value;
-    else if (argument == QStringLiteral("--toc-text-size-shrink")) object->tocTextSizeShrink = value.toDouble(ok);
+    else if (argument == QStringLiteral("--toc-text-size-shrink")) {
+        const double v = value.toDouble(ok);
+        *ok = *ok && v > 0.0;
+        if (*ok) object->tocTextSizeShrink = v;
+    }
     else if (argument == QStringLiteral("--toc-xsl") || argument == QStringLiteral("--xsl-style-sheet"))
         object->tocXsl = value;
     else if (argument == QStringLiteral("--copies")) *ok = global->set("copies", value);
@@ -322,6 +388,10 @@ bool applyValue(const QString& argument, const QString& value, GlobalSettings* g
     else if (argument == QStringLiteral("--user-password")) global->userPassword = value;
     else if (argument == QStringLiteral("--owner-password")) global->ownerPassword = value;
     else if (argument == QStringLiteral("--watermark")) global->watermark = value;
+    else if (argument == QStringLiteral("--dump-info")) global->dumpInfo = value;
+    else if (argument == QStringLiteral("--attach")) {
+        if (!value.isEmpty()) global->attachments.append(value);
+    }
     else if (argument == QStringLiteral("--retry")) *ok = global->set("retry", value);
     else if (argument == QStringLiteral("--timeout")) *ok = global->set("timeout", value);
     else if (argument == QStringLiteral("--ssl-crt-path")) global->sslCrtPath = value;
@@ -377,13 +447,14 @@ ParsedArguments ArgParser::parse(const QStringList& arguments)
             continue;
         }
         if (!endOptions && argument != QStringLiteral("-") && argument.startsWith(QLatin1Char('-'))) {
-            if (argument == QStringLiteral("--replace") || argument == QStringLiteral("--cookie") ||
-                argument == QStringLiteral("--post") || argument == QStringLiteral("--post-file")) {
+            const QString option = expandOption(argument);
+            if (option == QStringLiteral("--replace") || option == QStringLiteral("--cookie") ||
+                option == QStringLiteral("--post") || option == QStringLiteral("--post-file")) {
                 i += 2;
                 expectBoundInput = false;
                 continue;
             }
-            if (argument == QStringLiteral("--custom-header")) {
+            if (option == QStringLiteral("--custom-header")) {
                 if (i + 1 < arguments.size() && arguments.at(i + 1).contains(QLatin1Char(':')) &&
                     !arguments.at(i + 1).startsWith(QLatin1Char('-'))) {
                     ++i;
@@ -393,7 +464,7 @@ ParsedArguments ArgParser::parse(const QStringList& arguments)
                 expectBoundInput = false;
                 continue;
             }
-            if (needsValue(argument)) {
+            if (needsValue(option)) {
                 ++i;
                 expectBoundInput = false;
             }
@@ -436,15 +507,16 @@ ParsedArguments ArgParser::parse(const QStringList& arguments)
             continue;
         }
         if (!endOptions && argument != QStringLiteral("-") && argument.startsWith(QLatin1Char('-'))) {
-            if (argument == QStringLiteral("--help") || argument == QStringLiteral("-h")) {
+            const QString option = expandOption(argument);
+            if (option == QStringLiteral("--help") || option == QStringLiteral("--extended-help")) {
                 result.help = true;
                 continue;
             }
-            if (argument == QStringLiteral("--version") || argument == QStringLiteral("-V")) {
+            if (option == QStringLiteral("--version")) {
                 result.version = true;
                 continue;
             }
-            if (current && isGlobalOnly(argument)) {
+            if (current && isGlobalOnly(option)) {
                 result.error = QStringLiteral("global option %1 must appear before document objects")
                     .arg(argument);
                 return result;
@@ -452,7 +524,7 @@ ParsedArguments ArgParser::parse(const QStringList& arguments)
             ObjectSettings* target = current ? current : &defaults;
             if (current) current->localOptions = true;
 
-            if (argument == QStringLiteral("--replace")) {
+            if (option == QStringLiteral("--replace")) {
                 QString name;
                 if (!takeValue(arguments, &i, &name, &result.error)) return result;
                 QString replacement;
@@ -460,7 +532,7 @@ ParsedArguments ArgParser::parse(const QStringList& arguments)
                 target->replacements.insert(name, replacement);
                 continue;
             }
-            if (argument == QStringLiteral("--cookie")) {
+            if (option == QStringLiteral("--cookie")) {
                 QString name;
                 if (!takeValue(arguments, &i, &name, &result.error)) return result;
                 QString value;
@@ -468,7 +540,7 @@ ParsedArguments ArgParser::parse(const QStringList& arguments)
                 target->extraCookies.append({name, value});
                 continue;
             }
-            if (argument == QStringLiteral("--post")) {
+            if (option == QStringLiteral("--post")) {
                 QString name;
                 if (!takeValue(arguments, &i, &name, &result.error)) return result;
                 QString value;
@@ -476,7 +548,7 @@ ParsedArguments ArgParser::parse(const QStringList& arguments)
                 target->postFields.append({name, value});
                 continue;
             }
-            if (argument == QStringLiteral("--post-file")) {
+            if (option == QStringLiteral("--post-file")) {
                 QString name;
                 if (!takeValue(arguments, &i, &name, &result.error)) return result;
                 QString path;
@@ -484,7 +556,7 @@ ParsedArguments ArgParser::parse(const QStringList& arguments)
                 target->postFiles.append({name, path});
                 continue;
             }
-            if (argument == QStringLiteral("--custom-header")) {
+            if (option == QStringLiteral("--custom-header")) {
                 QString first;
                 if (!takeValue(arguments, &i, &first, &result.error)) return result;
                 if (first.contains(QLatin1Char(':'))) {
@@ -498,15 +570,15 @@ ParsedArguments ArgParser::parse(const QStringList& arguments)
                 }
                 continue;
             }
-            if (applyFlag(argument, &result.global, target)) continue;
-            if (!needsValue(argument)) {
+            if (applyFlag(option, &result.global, target)) continue;
+            if (!needsValue(option)) {
                 result.error = QStringLiteral("unknown option: %1").arg(argument);
                 return result;
             }
             QString value;
             if (!takeValue(arguments, &i, &value, &result.error)) return result;
             bool ok = true;
-            if (!applyValue(argument, value, &result.global, target, &ok)) {
+            if (!applyValue(option, value, &result.global, target, &ok)) {
                 result.error = QStringLiteral("unknown option: %1").arg(argument);
                 return result;
             }
@@ -602,16 +674,20 @@ QString ArgParser::usage()
         "  object apply only to that object. cover has no headers/footers and is\n"
         "  omitted from the outline.\n\n"
         "Page options:\n"
-        "  --page-size SIZE              A4, Letter, Legal, ...\n"
-        "  --orientation ORIENTATION     Portrait or Landscape\n"
-        "  --margin-top/--margin-right/--margin-bottom/--margin-left LENGTH\n"
-        "  --dpi DPI                     Layout DPI (default 96; scales like zoom 96/DPI)\n"
+        "  -s, --page-size SIZE          A4, Letter, Legal, ...\n"
+        "  -O, --orientation ORIENTATION Portrait or Landscape\n"
+        "  -T, --margin-top LENGTH       Page top margin\n"
+        "  -R, --margin-right LENGTH     Page right margin\n"
+        "  -B, --margin-bottom LENGTH    Page bottom margin\n"
+        "  -L, --margin-left LENGTH      Page left margin\n"
+        "  -d, --dpi DPI                 Layout DPI (default 96; scales like zoom 96/DPI)\n"
+        "  -g, --grayscale               Generate the PDF in grayscale\n"
         "  --title TITLE                 PDF document title\n"
         "  --enable-smart-shrinking      Shrink wide content to the page width (default)\n"
         "  --disable-smart-shrinking     Do not shrink wide content to the page width\n\n"
         "Rendering options:\n"
         "  --javascript-delay MS         Wait after page load (default 200)\n"
-        "  --viewport-size WxH           Emulate a browser viewport in pixels\n"
+        "  --viewport-size WxH           Browser viewport in pixels (default 1024 x page)\n"
         "  --minimum-font-size SIZE      Smallest font size in pixels\n"
         "  --background                  Print CSS backgrounds (default)\n"
         "  --no-background               Do not print CSS backgrounds\n"
@@ -619,7 +695,7 @@ QString ArgParser::usage()
         "  --page-ranges RANGES          Print only these pages (e.g. 1-3,5)\n"
         "  --image-dpi DPI               Cap in-page image DPI before print (default 600)\n"
         "  --image-quality QUALITY       JPEG quality when resampling images (default 94)\n"
-        "  --lowquality, -l              Smaller PDF: 150 DPI images at quality 40\n"
+        "  -l, --lowquality              Smaller PDF: 150 DPI images at quality 40\n"
         "  --copies N                    Repeat the document N times (default 1)\n"
         "  --compress                    Recompress with qpdf (object streams + flate)\n"
         "  --compress-level N            Flate level 1-9 (implies --compress)\n"
@@ -632,6 +708,7 @@ QString ArgParser::usage()
         "  --owner-password PASS         Encrypt; owner/permissions password\n"
         "  --linearize                   Fast web view (linearized PDF)\n"
         "  --watermark TEXT              Diagonal watermark on every page\n"
+        "  --attach FILE                 Embed FILE as a PDF attachment (qpdf 10.6+)\n"
         "  --no-header-on-first          Do not draw header/footer on page 1\n"
         "  --header-on all|odd|even      Which pages get the header\n"
         "  --footer-on all|odd|even      Which pages get the footer\n"
@@ -642,7 +719,7 @@ QString ArgParser::usage()
         "  --ca-certificate FILE         Extra CA certificate (PEM)\n"
         "  --window-status VALUE         Wait until window.status matches\n"
         "  --run-script SCRIPT           Run JavaScript after load\n"
-        "  --disable-javascript          Disable JavaScript\n"
+        "  -n, --disable-javascript      Disable JavaScript\n"
         "  --stop-slow-scripts           Cap long script/font waits (default)\n"
         "  --no-stop-slow-scripts        Wait the full javascript-delay / font ready\n"
         "  --keep-relative-links         Leave local hrefs relative in the PDF\n"
@@ -651,7 +728,7 @@ QString ArgParser::usage()
         "  --no-print-media-type         Prefer screen styles; drop print stylesheets\n"
         "  --enable-local-file-access    Allow file URLs to access local files\n"
         "  --custom-header NAME:VALUE    Add an HTTP request header\n"
-        "  --proxy URL                  Use an HTTP/HTTPS proxy\n"
+        "  -p, --proxy URL              Use an HTTP/HTTPS proxy\n"
         "  --proxy-auth USER:PASSWORD  Authenticate with the proxy\n"
         "  --username USER             HTTP authentication username\n"
         "  --password PASSWORD         HTTP authentication password\n"
@@ -670,14 +747,17 @@ QString ArgParser::usage()
         "  --toc-header-text TEXT       TOC empty-state heading\n"
         "  --toc-caption-text TEXT      TOC title\n"
         "  --toc-level-indentation LEN  Heading indentation unit\n"
+        "  --toc-page-numbers           Show heading pages in the TOC (default)\n"
+        "  --no-toc-page-numbers        Do not show heading pages in the TOC\n"
         "  --no-toc-use-dotted-lines    Disable TOC dotted leaders\n\n"
         "  --dump-outline FILE          Export heading outline XML\n"
+        "  --dump-info FILE             Export page count and outline as JSON\n"
         "  --dump-default-toc-xsl       Print the default TOC XSLT and exit\n"
         "  --toc-xsl FILE               Build the TOC with an XSLT stylesheet\n"
         "  --cookie NAME VALUE          Set an extra cookie\n"
         "  --allow PATH                 Allow local files under PATH\n"
         "  --cache-dir PATH             WebEngine cache directory\n"
-        "  --log-level LEVEL            none, error, warn, or info\n"
+        "  --log-level LEVEL            none, error, warn, info, or verbose\n"
         "  --debug-javascript           Print page console messages\n"
         "  --bypass-proxy-for HOST      Do not use the proxy for HOST\n"
         "  --custom-header-propagation  Send custom headers on every request (default)\n\n"
@@ -694,9 +774,11 @@ QString ArgParser::usage()
         "                                Same as --after-page 3\n"
         "  --after-page 0                Insert extra before the first page\n\n"
         "Other options:\n"
-        "  --quiet                       Suppress informational output\n"
-        "  --version                     Print version\n"
-        "  --help                        Print this help\n\n"
+        "  -q, --quiet                   Be less verbose (same as --log-level none)\n"
+        "  -v, --verbose                 Extra conversion detail (same as --log-level verbose)\n"
+        "  -V, --version                 Print version\n"
+        "  -h, --help                    Print this help\n"
+        "  -H, --extended-help           Same as --help\n\n"
         "Note: Qt WebEngine does not provide wkhtmltopdf's native PDF outline and\n"
         "HTML header/footer APIs. Page numbers use a qpdf overlay. Default top/bottom\n"
         "margins grow when a header or footer is set so body text is not covered.\n");

@@ -90,6 +90,8 @@ QString GlobalSettings::get(const char* name) const
     if (key == QStringLiteral("ownerPassword")) return ownerPassword;
     if (key == QStringLiteral("linearize")) return boolString(linearize);
     if (key == QStringLiteral("watermark")) return watermark;
+    if (key == QStringLiteral("dumpInfo")) return dumpInfo;
+    if (key == QStringLiteral("attachments")) return attachments.join(QLatin1Char('\n'));
     if (key == QStringLiteral("skipHeaderOnFirst")) return boolString(skipHeaderOnFirst);
     if (key == QStringLiteral("headerOn")) return headerOn;
     if (key == QStringLiteral("footerOn")) return footerOn;
@@ -150,11 +152,12 @@ bool GlobalSettings::set(const char* name, const QString& value)
     if (key == QStringLiteral("logLevel")) {
         const QString normalized = value.trimmed().toLower();
         if (normalized != QStringLiteral("none") && normalized != QStringLiteral("error") &&
-            normalized != QStringLiteral("warn") && normalized != QStringLiteral("info")) {
+            normalized != QStringLiteral("warn") && normalized != QStringLiteral("info") &&
+            normalized != QStringLiteral("verbose")) {
             return false;
         }
         logLevel = normalized;
-        if (normalized == QStringLiteral("none")) quiet = true;
+        quiet = (normalized == QStringLiteral("none"));
         return true;
     }
     if (key == QStringLiteral("cacheDir") || key == QStringLiteral("load.cacheDir")) {
@@ -212,6 +215,13 @@ bool GlobalSettings::set(const char* name, const QString& value)
     if (key == QStringLiteral("ownerPassword")) { ownerPassword = value; return true; }
     if (key == QStringLiteral("linearize")) return parseBool(value, &linearize);
     if (key == QStringLiteral("watermark")) { watermark = value; return true; }
+    if (key == QStringLiteral("dumpInfo")) { dumpInfo = value; return true; }
+    if (key == QStringLiteral("attachments")) {
+        for (const QString& attachment : value.split(QLatin1Char('\n'), Qt::SkipEmptyParts)) {
+            if (!attachment.isEmpty()) attachments.append(attachment);
+        }
+        return true;
+    }
     if (key == QStringLiteral("skipHeaderOnFirst")) return parseBool(value, &skipHeaderOnFirst);
     if (key == QStringLiteral("headerOn")) {
         const QString n = value.trimmed().toLower();
@@ -304,6 +314,7 @@ QString ObjectSettings::get(const char* name) const
     if (key == QStringLiteral("toc.levelIndentation")) return tocLevelIndentation;
     if (key == QStringLiteral("toc.textSizeShrink")) return QString::number(tocTextSizeShrink);
     if (key == QStringLiteral("toc.useDottedLines")) return boolString(tocUseDottedLines);
+    if (key == QStringLiteral("toc.pageNumbers")) return boolString(tocPageNumbers);
     if (key == QStringLiteral("postData")) return postData;
     if (key == QStringLiteral("postFile")) return postFile;
     if (key == QStringLiteral("viewportSize")) return viewportSize;
@@ -326,10 +337,30 @@ bool ObjectSettings::set(const char* name, const QString& value)
     if (key == QStringLiteral("footer.left")) { footerLeft = value; return true; }
     if (key == QStringLiteral("footer.center")) { footerCenter = value; return true; }
     if (key == QStringLiteral("footer.right")) { footerRight = value; return true; }
-    if (key == QStringLiteral("header.fontSize")) { const int v = value.toInt(&ok); if (ok) headerFontSize = v; return ok; }
-    if (key == QStringLiteral("footer.fontSize")) { const int v = value.toInt(&ok); if (ok) footerFontSize = v; return ok; }
-    if (key == QStringLiteral("header.spacing")) { const double v = value.toDouble(&ok); if (ok) headerSpacing = v; return ok; }
-    if (key == QStringLiteral("footer.spacing")) { const double v = value.toDouble(&ok); if (ok) footerSpacing = v; return ok; }
+    if (key == QStringLiteral("header.fontSize")) {
+        const int v = value.toInt(&ok);
+        if (!ok || v < 1) return false;
+        headerFontSize = v;
+        return true;
+    }
+    if (key == QStringLiteral("footer.fontSize")) {
+        const int v = value.toInt(&ok);
+        if (!ok || v < 1) return false;
+        footerFontSize = v;
+        return true;
+    }
+    if (key == QStringLiteral("header.spacing")) {
+        const double v = value.toDouble(&ok);
+        if (!ok || v < 0.0) return false;
+        headerSpacing = v;
+        return true;
+    }
+    if (key == QStringLiteral("footer.spacing")) {
+        const double v = value.toDouble(&ok);
+        if (!ok || v < 0.0) return false;
+        footerSpacing = v;
+        return true;
+    }
     if (key == QStringLiteral("javascriptDelay") || key == QStringLiteral("load.jsdelay")) {
         const int v = value.toInt(&ok);
         if (ok && v >= 0) javascriptDelay = v;
@@ -382,7 +413,12 @@ bool ObjectSettings::set(const char* name, const QString& value)
         loadMediaErrorHandling = normalized;
         return true;
     }
-    if (key == QStringLiteral("zoom")) { const double v = value.toDouble(&ok); if (ok) zoom = v; return ok; }
+    if (key == QStringLiteral("zoom")) {
+        const double v = value.toDouble(&ok);
+        if (!ok || v <= 0.0) return false;
+        zoom = v;
+        return true;
+    }
     if (key == QStringLiteral("windowStatus")) { windowStatus = value; return true; }
     if (key == QStringLiteral("runScript")) { runScript = value; return true; }
     if (key == QStringLiteral("userStyleSheet")) { userStyleSheet = value; return true; }
@@ -390,8 +426,14 @@ bool ObjectSettings::set(const char* name, const QString& value)
     if (key == QStringLiteral("toc.headerText")) { tocHeaderText = value; return true; }
     if (key == QStringLiteral("toc.captionText")) { tocCaptionText = value; return true; }
     if (key == QStringLiteral("toc.levelIndentation")) { tocLevelIndentation = value; return true; }
-    if (key == QStringLiteral("toc.textSizeShrink")) { const double v = value.toDouble(&ok); if (ok) tocTextSizeShrink = v; return ok; }
+    if (key == QStringLiteral("toc.textSizeShrink")) {
+        const double v = value.toDouble(&ok);
+        if (!ok || v <= 0.0) return false;
+        tocTextSizeShrink = v;
+        return true;
+    }
     if (key == QStringLiteral("toc.useDottedLines")) return parseBool(value, &tocUseDottedLines);
+    if (key == QStringLiteral("toc.pageNumbers")) return parseBool(value, &tocPageNumbers);
     if (key == QStringLiteral("postData")) { postData = value; return true; }
     if (key == QStringLiteral("postFile")) { postFile = value; return true; }
     if (key == QStringLiteral("viewportSize")) {
@@ -454,7 +496,12 @@ bool ImageSettings::set(const char* name, const QString& value)
     if (key == QStringLiteral("screenWidth")) { const int v = value.toInt(&ok); if (ok) screenWidth = v; return ok; }
     if (key == QStringLiteral("screenHeight")) { const int v = value.toInt(&ok); if (ok) screenHeight = v; return ok; }
     if (key == QStringLiteral("quality")) { const int v = value.toInt(&ok); if (ok) quality = v; return ok; }
-    if (key == QStringLiteral("zoom")) { const double v = value.toDouble(&ok); if (ok) zoom = v; return ok; }
+    if (key == QStringLiteral("zoom")) {
+        const double v = value.toDouble(&ok);
+        if (!ok || v <= 0.0) return false;
+        zoom = v;
+        return true;
+    }
     if (key == QStringLiteral("smartWidth")) return parseBool(value, &smartWidth);
     if (key == QStringLiteral("crop.left")) { const int v = value.toInt(&ok); if (ok) cropLeft = v; return ok; }
     if (key == QStringLiteral("crop.top")) { const int v = value.toInt(&ok); if (ok) cropTop = v; return ok; }

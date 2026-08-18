@@ -140,6 +140,147 @@ PY
     check $? "cover page draws no header; body pages keep theirs"
 fi
 
+# --page-ranges keeps merged-document page numbers on the surviving pages.
+ranged_pdf="$out_dir/per-object-ranged.pdf"
+if ! "$bin" --javascript-delay 0 --enable-local-file-access --page-ranges 2 \
+        "$data_dir/toc.html" --header-center "FIRST [page]/[topage]" \
+        "$data_dir/multi-second.html" --header-center "SECOND [page]/[topage]" \
+        "$ranged_pdf" >/dev/null 2>&1 \
+        || [ ! -s "$ranged_pdf" ]; then
+    check 1 "page-ranges + per-object headers PDF renders"
+else
+    check 0 "page-ranges + per-object headers PDF renders"
+fi
+
+if [ -s "$ranged_pdf" ]; then
+    ranged_pages=$(qpdf --show-npages "$ranged_pdf" 2>/dev/null | tr -d ' \n')
+    if [ "$ranged_pages" = "1" ]; then
+        check 0 "page-ranges PDF has 1 page"
+    else
+        check 1 "page-ranges PDF has 1 page (got ${ranged_pages:-none})"
+    fi
+    python3 - "$ranged_pdf" <<'PY'
+import re
+import subprocess
+import sys
+
+pdf = sys.argv[1]
+raw = subprocess.check_output(
+    ["gs", "-q", "-dNOPAUSE", "-dBATCH", "-sDEVICE=txtwrite",
+     "-sOutputFile=-", pdf],
+    stderr=subprocess.DEVNULL)
+text = re.sub(r"\s+", "", raw.decode("utf-8", "replace"))
+if "SECOND2/2" in text and "FIRST" not in text:
+    print("RANGED:PASS")
+    sys.exit(0)
+print("RANGED:FAIL (expected SECOND 2/2 from the full document)")
+sys.exit(1)
+PY
+    check $? "surviving page keeps its own header with full-document numbering"
+fi
+
+# The watermark lands on every page, including the cover; the cover still
+# carries no header/footer.
+wm_pdf="$out_dir/per-object-watermark.pdf"
+if ! "$bin" --javascript-delay 0 --enable-local-file-access --watermark "DRAFT" \
+        cover "$data_dir/cover.html" \
+        page "$data_dir/toc.html" --header-center "BODY [page]/[topage]" \
+        "$wm_pdf" >/dev/null 2>&1 \
+        || [ ! -s "$wm_pdf" ]; then
+    check 1 "cover + watermark PDF renders"
+else
+    check 0 "cover + watermark PDF renders"
+fi
+
+if [ -s "$wm_pdf" ]; then
+    python3 - "$wm_pdf" <<'PY'
+import re
+import subprocess
+import sys
+
+pdf = sys.argv[1]
+failures = 0
+
+def page_text(page):
+    raw = subprocess.check_output(
+        ["gs", "-q", "-dNOPAUSE", "-dBATCH", "-sDEVICE=txtwrite",
+         "-dFirstPage=%d" % page, "-dLastPage=%d" % page,
+         "-sOutputFile=-", pdf],
+        stderr=subprocess.DEVNULL)
+    return re.sub(r"\s+", "", raw.decode("utf-8", "replace"))
+
+def has_watermark(text):
+    # The diagonal watermark is rotated, so text extractors may reverse it.
+    return "DRAFT" in text or "TFARD" in text
+
+text1 = page_text(1)
+if has_watermark(text1) and "BODY" not in text1:
+    print("WM_PAGE_1:PASS")
+else:
+    print("WM_PAGE_1:FAIL (expected watermark, no body header on cover)")
+    failures += 1
+
+text2 = page_text(2)
+if has_watermark(text2) and "BODY2/2" in text2:
+    print("WM_PAGE_2:PASS")
+else:
+    print("WM_PAGE_2:FAIL (expected watermark and BODY 2/2)")
+    failures += 1
+
+sys.exit(1 if failures else 0)
+PY
+    check $? "watermark covers all pages; cover still has no header"
+fi
+
+# Mixed objects: one uses page-number placeholders (qpdf overlay), the other
+# a plain CSS header. The plain header must not be drawn twice.
+mixed_pdf="$out_dir/per-object-mixed.pdf"
+if ! "$bin" --javascript-delay 0 --enable-local-file-access \
+        "$data_dir/toc.html" --header-center "NUMBERED [page]/[topage]" \
+        "$data_dir/multi-second.html" --header-center "PLAIN" \
+        "$mixed_pdf" >/dev/null 2>&1 \
+        || [ ! -s "$mixed_pdf" ]; then
+    check 1 "mixed numbered/plain headers PDF renders"
+else
+    check 0 "mixed numbered/plain headers PDF renders"
+fi
+
+if [ -s "$mixed_pdf" ]; then
+    python3 - "$mixed_pdf" <<'PY'
+import re
+import subprocess
+import sys
+
+pdf = sys.argv[1]
+failures = 0
+
+def page_text(page):
+    raw = subprocess.check_output(
+        ["gs", "-q", "-dNOPAUSE", "-dBATCH", "-sDEVICE=txtwrite",
+         "-dFirstPage=%d" % page, "-dLastPage=%d" % page,
+         "-sOutputFile=-", pdf],
+        stderr=subprocess.DEVNULL)
+    return re.sub(r"\s+", "", raw.decode("utf-8", "replace"))
+
+text1 = page_text(1)
+if "NUMBERED1/2" in text1 and "PLAIN" not in text1:
+    print("MIXED_PAGE_1:PASS")
+else:
+    print("MIXED_PAGE_1:FAIL (expected NUMBERED 1/2, no PLAIN)")
+    failures += 1
+
+text2 = page_text(2)
+if text2.count("PLAIN") == 1 and "NUMBERED" not in text2:
+    print("MIXED_PAGE_2:PASS")
+else:
+    print("MIXED_PAGE_2:FAIL (PLAIN must appear exactly once)")
+    failures += 1
+
+sys.exit(1 if failures else 0)
+PY
+    check $? "placeholder object uses the overlay; plain header is not double-drawn"
+fi
+
 if [ "$failures" -eq 0 ]; then
     echo "ALL PER-OBJECT PAGE-NUMBER CHECKS PASSED"
 else

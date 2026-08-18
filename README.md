@@ -24,6 +24,8 @@ Page numbers, copies, outlines, and compression use bundled **qpdf**.
 ```sh
 wkhtmltopdf-ng https://example.com out.pdf
 wkhtmltopdf-ng --enable-local-file-access --page-size A4 input.html out.pdf
+wkhtmltopdf-ng -q -s A4 -O Landscape -T 10mm -B 10mm input.html out.pdf
+wkhtmltopdf-ng -v --enable-local-file-access input.html out.pdf
 wkhtmltopdf-ng --header-right "[page]/[topage]" --footer-center "Page [page]" \
   --enable-local-file-access input.html out.pdf
 wkhtmltoimage-ng --width 1200 input.html shot.png
@@ -40,6 +42,14 @@ export QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox
 ```
 
 `--help` prints the full option list.
+
+Short options match wkhtmltopdf 0.12 (`-s` page size, `-O` orientation,
+`-T`/`-R`/`-B`/`-L` margins, `-d` dpi, `-g` grayscale, `-q` quiet,
+`-n` disable JS, `-p` proxy, `-l` low quality, `-h`/`-H` help, `-V` version).
+
+Logging: default `--log-level info` prints `Loading pages (1/6)` … `Done`.
+`-q` / `--quiet` is `--log-level none`. `-v` / `--verbose` (extra vs 0.12)
+prints each object, load, print, and merge step.
 
 ## Build from source
 

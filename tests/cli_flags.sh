@@ -26,7 +26,7 @@ expect_fail "negative javascript-delay" --javascript-delay -5 in.html out.pdf
 expect_fail "cover without input" cover out.pdf
 expect_fail "page without input" page out.pdf
 expect_fail "global option after object" in.html --page-size A4 out.pdf
-expect_fail "invalid log-level" --log-level verbose in.html out.pdf
+expect_fail "invalid log-level" --log-level debug in.html out.pdf
 expect_fail "invalid page-ranges" --page-ranges nope in.html out.pdf
 expect_fail "invalid image-dpi" --image-dpi 0 in.html out.pdf
 expect_fail "invalid image-quality" --image-quality 140 in.html out.pdf
@@ -43,6 +43,48 @@ if "$bin" --dump-default-toc-xsl | grep -q "xsl:stylesheet"; then
     echo "PASS: dump-default-toc-xsl"
 else
     echo "FAIL: dump-default-toc-xsl"
+    failures=$((failures + 1))
+fi
+
+expect_ok() {
+    local name=$1
+    shift
+    if "$bin" "$@" >/dev/null 2>&1; then
+        echo "PASS: $name"
+    else
+        echo "FAIL: $name (expected zero exit)"
+        failures=$((failures + 1))
+    fi
+}
+
+expect_ok "short options (0.12 layout)" -s A4 -O Landscape -T 10mm -R 10mm -B 10mm -L 10mm -d 96 --dump-default-toc-xsl
+expect_ok "short flags -g -q -n -l" -g -q -n -l --dump-default-toc-xsl
+expect_ok "short proxy -p" -p http://127.0.0.1:8080 --dump-default-toc-xsl
+expect_ok "verbose flag" --verbose --dump-default-toc-xsl
+expect_ok "short verbose -v" -v --dump-default-toc-xsl
+expect_ok "log-level verbose" --log-level verbose --dump-default-toc-xsl
+expect_ok "log-level none" --log-level none --dump-default-toc-xsl
+expect_fail "unknown short option" -z in.html out.pdf
+expect_fail "short page-size missing value" -s
+
+if "$bin" -H 2>/dev/null | grep -q "Usage:"; then
+    echo "PASS: extended-help -H"
+else
+    echo "FAIL: extended-help -H"
+    failures=$((failures + 1))
+fi
+
+if "$bin" --extended-help 2>/dev/null | grep -q "\\-v, --verbose"; then
+    echo "PASS: help lists -v/--verbose"
+else
+    echo "FAIL: help lists -v/--verbose"
+    failures=$((failures + 1))
+fi
+
+if "$bin" -h 2>/dev/null | grep -q "\\-s, --page-size"; then
+    echo "PASS: help lists -s/--page-size"
+else
+    echo "FAIL: help lists -s/--page-size"
     failures=$((failures + 1))
 fi
 

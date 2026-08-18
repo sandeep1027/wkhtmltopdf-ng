@@ -40,8 +40,8 @@ public:
     bool grayscale = false;         // --grayscale
     bool lowquality = false;        // --lowquality
     bool printMediaType = true;     // --print-media-type
-    QString logLevel = "info";      // --log-level
-    bool quiet = false;             // --quiet
+    QString logLevel = "info";      // --log-level none|error|warn|info|verbose
+    bool quiet = false;             // --quiet / -q  (--verbose / -v sets logLevel verbose)
     bool useCompression = true;     // --no-pdf-compression
     bool recompressPdf = false;     // --compress (extra qpdf shrink pass)
     int compressionLevel = 0;       // --compress-level 1-9 (0 = qpdf default)
@@ -63,6 +63,8 @@ public:
     QString ownerPassword;          // --owner-password
     bool linearize = false;         // --linearize
     QString watermark;              // --watermark TEXT
+    QString dumpInfo;               // --dump-info FILE (JSON page count/outline)
+    QStringList attachments;        // --attach FILE (embed into the PDF, qpdf 10.6+)
     bool skipHeaderOnFirst = false; // --no-header-on-first / --skip-first-header
     QString headerOn = "all";       // --header-on all|odd|even
     QString footerOn = "all";       // --footer-on all|odd|even
@@ -148,6 +150,7 @@ public:
     QString tocLevelIndentation = "1em";  // --toc-level-indentation
     double tocTextSizeShrink = 0.8;  // --toc-text-size-shrink
     bool tocUseDottedLines = true;  // --toc-use-dotted-lines
+    bool tocPageNumbers = true;     // --toc-page-numbers (heading pages in the TOC)
     QString tocCaptionText = "Table of Contents";  // --toc-caption-text
     bool tocForwardLinks = true;    // --toc-forward-links
     bool tocBackLinks = false;      // --toc-back-links

@@ -54,6 +54,8 @@ Examples:
 
   wkhtmltopdf-ng https://example.com out.pdf
   wkhtmltopdf-ng --page-size A4 --margin-top 20mm input.html out.pdf
+  wkhtmltopdf-ng -q -s A4 -O Landscape -T 10mm -B 10mm input.html out.pdf
+  wkhtmltopdf-ng -v --enable-local-file-access input.html out.pdf
   wkhtmltopdf-ng --enable-local-file-access \
       --header-left "Report" --header-right "[page]/[topage]" \
       --footer-center "Page [page] of [topage]" \
@@ -70,14 +72,18 @@ Examples:
 ---------------
 
 Page / layout
-  --page-size SIZE              A4, Letter, Legal, ...
-  --orientation Portrait|Landscape
-  --margin-top/right/bottom/left LENGTH
-  --dpi DPI                     layout scale = (96/DPI) * zoom  (default 96)
+  --page-size, -s SIZE          A4, Letter, Legal, ...
+  --orientation, -O Portrait|Landscape
+  --margin-top, -T LENGTH
+  --margin-right, -R LENGTH
+  --margin-bottom, -B LENGTH
+  --margin-left, -L LENGTH
+  --dpi, -d DPI                 layout scale = (96/DPI) * zoom  (default 96)
+  --grayscale, -g               generate the PDF in grayscale
   --zoom FACTOR
   --enable-smart-shrinking      shrink content wider than the page (default)
   --disable-smart-shrinking
-  --viewport-size WxH
+  --viewport-size WxH           default 1024 x page; avoids 0-width mobile layout
   --minimum-font-size PX
   --page-ranges 1-3,5           Qt 6.8+ only
   --copies N
@@ -86,7 +92,7 @@ Render / wait
   --javascript-delay MS         default 200
   --window-status VALUE         wait until window.status matches
   --run-script SCRIPT
-  --disable-javascript / --enable-javascript
+  --disable-javascript, -n / --enable-javascript
   --stop-slow-scripts           default; cap long waits
   --no-stop-slow-scripts
   --print-media-type            default
@@ -112,7 +118,9 @@ PDF extras (need qpdf in PATH or bin/qpdf)
   --author / --subject / --keywords TEXT
   --user-password / --owner-password PASS
   --watermark TEXT
+  --attach FILE                embed FILE as a PDF attachment (qpdf 10.6+)
   --dump-outline FILE
+  --dump-info FILE             JSON with page count and outline
 
 Headers and footers
   --header-left/center/right TEXT
@@ -127,7 +135,7 @@ Headers and footers
           [date] [isodate] [time] [title] [doctitle]
 
 Network
-  --proxy URL
+  --proxy, -p URL
   --proxy-auth USER:PASSWORD
   --username / --password
   --cookie NAME VALUE
@@ -149,9 +157,10 @@ TOC
   --toc-caption-text TEXT
   --toc-header-text TEXT
   --toc-xsl FILE
+  --toc-page-numbers           show heading page numbers in the TOC (default)
+  --no-toc-page-numbers        hide heading page numbers in the TOC
   --dump-default-toc-xsl
 
-Other
 PDF split / merge / insert (existing PDFs, qpdf; no HTML render)
   --merge-pdf A.pdf B.pdf [C.pdf ...] out.pdf
   --split-pdf in.pdf --page-ranges 1-2 part.pdf
@@ -164,10 +173,43 @@ PDF split / merge / insert (existing PDFs, qpdf; no HTML render)
   --after-page 0
       insert extra at the start
 
-  --quiet
-  --log-level none|error|warn|info
-  --version
-  --help
+Logging
+  --log-level none|error|warn|info|verbose   default info
+  --quiet, -q               same as --log-level none
+  --verbose, -v             same as --log-level verbose
+  --version, -V
+  --help, -h
+  --extended-help, -H       same as --help
+
+  none     no stderr (including conversion errors)
+  error    conversion errors only
+  warn     errors and warnings
+  info     0.12-style phases: Loading pages (1/6) ... Done
+  verbose  phases plus output path, page size, each object,
+           load / print / merge / retry lines
+
+Short options (wkhtmltopdf 0.12)
+
+  -s SIZE     --page-size
+  -O ORIENT   --orientation
+  -T LENGTH   --margin-top
+  -R LENGTH   --margin-right
+  -B LENGTH   --margin-bottom
+  -L LENGTH   --margin-left
+  -d DPI      --dpi
+  -g          --grayscale
+  -q          --quiet
+  -n          --disable-javascript
+  -p URL      --proxy
+  -l          --lowquality
+  -h          --help
+  -H          --extended-help
+  -V          --version
+  -v          --verbose          (extra; 0.12 has no -v)
+
+  Short options are one letter with a space before the value:
+    wkhtmltopdf-ng -s A4 -O Landscape -T 20mm in.html out.pdf
+  Combined letters (-qsg) and glued values (-sA4) are not accepted.
 
 wkhtmltoimage-ng extras: --width, --height, --quality, --fmt,
 --crop-x/--crop-y/--crop-width/--crop-height, --transparent.
@@ -257,6 +299,9 @@ wkhtmltopdf-ng uses Chromium printToPdf, then qpdf for:
   page-number overlays, copies, outlines, ranges, encryption,
   linearize, compress, keep-relative-links rewrite.
 
+Short options match 0.12: -s -O -T -R -B -L -d -g -q -n -p -l -h -H -V.
+-v / --verbose and --log-level verbose are extra (0.12 stops at info).
+
 Approximated, not identical:
   --dpi                 CSS zoom scale 96/dpi
   smart shrinking       post-layout shrink-to-fit
@@ -293,7 +338,8 @@ See tests/test_capi.c.
 Shell checks in tests/:
   regression.sh, cli_flags.sh, links.sh, header_footer.sh,
   pagination.sh, bank_statement.sh, js_font.sh, js_images.sh,
-  heavy_cdn.sh
+  heavy_cdn.sh, extra_features.sh, modern_css_js.sh,
+  pdf_edit.sh, per_object_pages.sh, print_layout.sh
 
 Fixtures: tests/test_data/
 Typical rendered PDFs (local, not in git): /tmp/wkhtmltopdf-ng-pdfs/

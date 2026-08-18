@@ -126,6 +126,10 @@ QString tocHtmlDocument(const ObjectSettings& settings, const QList<OutlineEntry
         if (settings.tocUseDottedLines) {
             items += QStringLiteral("<span class=\"wkhtmltopdf-ng-dots\" aria-hidden=\"true\"></span>");
         }
+        if (settings.tocPageNumbers && heading.page > 0) {
+            items += QStringLiteral("<span class=\"wkhtmltopdf-ng-toc-page\">%1</span>")
+                .arg(heading.page);
+        }
         items += QStringLiteral("</li>\n");
         ++index;
     }
@@ -142,6 +146,7 @@ QString tocHtmlDocument(const ObjectSettings& settings, const QList<OutlineEntry
         "li{display:flex;align-items:baseline;margin:.25em 0;}"
         "a{color:inherit;text-decoration:none;}"
         ".wkhtmltopdf-ng-dots{flex:1;border-bottom:1px dotted currentColor;margin:0 .5em .2em;}"
+        ".wkhtmltopdf-ng-toc-page{margin-left:auto;padding-left:.5em;}"
         "</style></head><body>"
         "<section class=\"wkhtmltopdf-ng-toc\" role=\"doc-toc\"><h1>%1</h1><ol>%3</ol></section>"
         "</body></html>")
@@ -191,7 +196,8 @@ QString defaultTocXsl()
         "  <xsl:template match=\"/\">\n"
         "    <html><head><meta charset=\"utf-8\"/><title>Table of Contents</title>\n"
         "    <style>body{font-family:sans-serif}ol{list-style:none;padding-left:1em}"
-        "li{margin:.25em 0}a{color:inherit;text-decoration:none}</style></head><body>\n"
+        "li{display:flex;align-items:baseline;margin:.25em 0}a{color:inherit;text-decoration:none}"
+        ".wkhtmltopdf-ng-toc-page{margin-left:auto;padding-left:.5em}</style></head><body>\n"
         "    <h1>Table of Contents</h1>\n"
         "    <ol><xsl:apply-templates select=\"outline/item\"/></ol>\n"
         "    </body></html>\n"
@@ -202,6 +208,7 @@ QString defaultTocXsl()
         "        <xsl:when test=\"@link\"><a href=\"{@link}\"><xsl:value-of select=\"@title\"/></a></xsl:when>\n"
         "        <xsl:otherwise><xsl:value-of select=\"@title\"/></xsl:otherwise>\n"
         "      </xsl:choose>\n"
+        "      <xsl:if test=\"@page\"><span class=\"wkhtmltopdf-ng-toc-page\"><xsl:value-of select=\"@page\"/></span></xsl:if>\n"
         "      <xsl:if test=\"item\"><ol><xsl:apply-templates select=\"item\"/></ol></xsl:if>\n"
         "    </li>\n"
         "  </xsl:template>\n"

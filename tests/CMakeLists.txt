@@ -193,6 +193,21 @@ if(EXISTS "/usr/lib/qt6/libexec/QtWebEngineProcess")
             $<TARGET_FILE:wkhtmltopdf-ng>
             ${CMAKE_CURRENT_SOURCE_DIR}/test_data
             ${CMAKE_CURRENT_BINARY_DIR}/heavy-cdn-check)
+    add_test(NAME wkhtmltopdf-ng-modern-css-js
+        COMMAND wkhtmltopdf-ng --enable-local-file-access --no-stop-slow-scripts
+            --javascript-delay 200 --window-status modern-css-js-done
+            ${CMAKE_CURRENT_SOURCE_DIR}/test_data/modern-css-js.html
+            ${CMAKE_CURRENT_BINARY_DIR}/modern-css-js.pdf)
+    add_test(NAME wkhtmltopdf-ng-modern-css-js-check
+        COMMAND /bin/bash ${CMAKE_CURRENT_SOURCE_DIR}/modern_css_js.sh
+            $<TARGET_FILE:wkhtmltopdf-ng>
+            ${CMAKE_CURRENT_SOURCE_DIR}/test_data
+            ${CMAKE_CURRENT_BINARY_DIR}/modern-css-js-check)
+    add_test(NAME wkhtmltopdf-ng-print-layout-check
+        COMMAND /bin/bash ${CMAKE_CURRENT_SOURCE_DIR}/print_layout.sh
+            $<TARGET_FILE:wkhtmltopdf-ng>
+            ${CMAKE_CURRENT_SOURCE_DIR}/test_data
+            ${CMAKE_CURRENT_BINARY_DIR}/print-layout-check)
     set_tests_properties(wkhtmltopdf-ng-dpi wkhtmltopdf-ng-smart-shrinking
         wkhtmltopdf-ng-links wkhtmltopdf-ng-links-no-external
         wkhtmltopdf-ng-links-no-internal wkhtmltopdf-ng-links-check
@@ -200,13 +215,16 @@ if(EXISTS "/usr/lib/qt6/libexec/QtWebEngineProcess")
         wkhtmltopdf-ng-js-font wkhtmltopdf-ng-js-font-check
         wkhtmltopdf-ng-js-images wkhtmltopdf-ng-js-images-check
         wkhtmltopdf-ng-heavy-cdn-check
+        wkhtmltopdf-ng-modern-css-js wkhtmltopdf-ng-modern-css-js-check
+        wkhtmltopdf-ng-print-layout-check
         PROPERTIES
             ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox"
             TIMEOUT 60)
     set_tests_properties(wkhtmltopdf-ng-links-check
         wkhtmltopdf-ng-bank-statement-check
         wkhtmltopdf-ng-js-font-check wkhtmltopdf-ng-js-images-check
-        wkhtmltopdf-ng-heavy-cdn-check
+        wkhtmltopdf-ng-heavy-cdn-check wkhtmltopdf-ng-modern-css-js-check
+        wkhtmltopdf-ng-print-layout-check
         PROPERTIES TIMEOUT 180)
 
     add_test(NAME wkhtmltoimage-ng-png
@@ -280,6 +298,11 @@ if(EXISTS "/usr/lib/qt6/libexec/QtWebEngineProcess")
                 $<TARGET_FILE:wkhtmltopdf-ng>
                 ${CMAKE_CURRENT_SOURCE_DIR}/test_data
                 ${CMAKE_CURRENT_BINARY_DIR}/per-object-pages-check)
+        add_test(NAME wkhtmltopdf-ng-extra-features-check
+            COMMAND /bin/bash ${CMAKE_CURRENT_SOURCE_DIR}/extra_features.sh
+                $<TARGET_FILE:wkhtmltopdf-ng>
+                ${CMAKE_CURRENT_SOURCE_DIR}/test_data
+                ${CMAKE_CURRENT_BINARY_DIR}/extra-features-check)
         add_test(NAME wkhtmltopdf-ng-pdf-edit-check
             COMMAND /bin/bash ${CMAKE_CURRENT_SOURCE_DIR}/pdf_edit.sh
                 $<TARGET_FILE:wkhtmltopdf-ng>
@@ -296,6 +319,7 @@ if(EXISTS "/usr/lib/qt6/libexec/QtWebEngineProcess")
         set_tests_properties(wkhtmltopdf-ng-header-footer-check
             wkhtmltopdf-ng-pagination-check
             wkhtmltopdf-ng-per-object-page-numbers-check
+            wkhtmltopdf-ng-extra-features-check
             wkhtmltopdf-ng-pdf-edit-check PROPERTIES TIMEOUT 120)
     endif()
 endif()

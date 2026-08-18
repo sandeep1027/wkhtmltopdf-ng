@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Print layout fixture</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Arial, sans-serif; color: #172033; }
+  .header {
+    color: #fff;
+    padding: 28px 32px;
+    border-radius: 0 0 16px 16px;
+    background:
+      radial-gradient(circle at 90% 10%, rgba(255,255,255,.22), transparent 25%),
+      radial-gradient(circle at 10% 90%, rgba(6,182,212,.35), transparent 30%),
+      linear-gradient(135deg, #4338ca, #635bff 55%, #0891b2);
+  }
+  .kpis { display: table; width: 100%; table-layout: fixed; margin: 16px 0; }
+  .kpi { display: table-cell; width: 25%; padding: 12px; border: 1px solid #d0d7e2; }
+  .columns { display: table; width: 100%; table-layout: fixed; }
+  .column { display: table-cell; width: 50%; padding: 12px; vertical-align: top; }
+  .progress-track { height: 10px; background: #e5e7eb; border-radius: 999px; overflow: hidden; }
+  .progress-bar { height: 10px; width: 64%; background: linear-gradient(90deg, #635bff, #06b6d4); }
+  .features { display: table; width: 100%; table-layout: fixed; margin-top: 16px; }
+  .feature { display: table-cell; width: 33.33%; padding: 12px; border: 1px solid #d0d7e2; }
+  @media screen and (max-width: 700px) {
+    .kpis, .columns, .features { display: block; }
+    .kpi, .column, .feature { display: block; width: 100%; }
+  }
+</style>
+</head>
+<body>
+  <div class="header"><h1>Executive Report</h1><p>White text on purple/blue gradient</p></div>
+  <div class="kpis">
+    <div class="kpi">Revenue</div>
+    <div class="kpi">Customers</div>
+    <div class="kpi">Conversion</div>
+    <div class="kpi">Retention</div>
+  </div>
+  <div class="columns">
+    <div class="column">Executive Overview left</div>
+    <div class="column">Executive Overview right</div>
+  </div>
+  <div class="progress-track"><div class="progress-bar"></div></div>
+  <div class="features">
+    <div class="feature">Priority A</div>
+    <div class="feature">Priority B</div>
+    <div class="feature">Priority C</div>
+  </div>
+</body>
+</html>

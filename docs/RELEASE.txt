@@ -3,20 +3,23 @@ wkhtmltopdf-ng 0.14.1
 Qt 6 WebEngine (Chromium) HTML-to-PDF and HTML-to-image converter.
 Replacement for archived wkhtmltopdf 0.12.x (Qt WebKit).
 
-New in 0.14.1
-  - Headers and footers are now applied per document object: when several
-    inputs each set their own header/footer text with [page]/[topage]
-    tokens, every page carries the header of the object it came from, with
-    page numbers resolved against the merged document. Cover and TOC pages
-    draw no header/footer, and objects without page-number placeholders
-    keep their in-page headers (no double drawing).
-  - Page-number overlays are applied before --page-ranges, so the page
-    numbers shown refer to the full document (consistent with single-input
-    conversions).
-  - The C API image-converter callbacks are now covered by tests: the
-    converter pointer handed to wkhtmltoimage_* callbacks is exercised
-    through wkhtmltoimage_current_phase / wkhtmltoimage_get_output, and the
-    C API version check no longer hardcodes a specific version number.
+New in 0.14.2
+  - wkhtmltopdf 0.12 short options: -s -O -T -R -B -L -d -g -q -n -p -l
+    -h -H -V. Scripts that call wkhtmltopdf -q -s A4 ... work unchanged.
+  - Verbose mode: -v / --verbose, and --log-level verbose. Prints output
+    path, page size, each object, and load / print / merge / retry lines
+    in addition to the usual Loading pages (1/6) ... Done phases.
+    --quiet / -q is the same as --log-level none (0.12 behaviour).
+    --log-level accepts none, error, warn, info (default), or verbose.
+  - Qt 6.2 print layout: a headless QWebEnginePage reported innerWidth=0
+    unless a view was shown, so @media screen and (max-width: 700px)
+    stacked table-cell columns. The converter now shows a desktop-sized
+    view (default 1024 x page), honors --viewport-size, enables
+    PrintElementBackgrounds, and sets print-color-adjust:exact so CSS
+    gradients print.
+  - --attach FILE embeds a PDF attachment (qpdf 10.6+). --dump-info FILE
+    writes page count and outline as JSON. TOC heading page numbers are
+    on by default (--no-toc-page-numbers to hide them).
 
 Download the archive that matches the machine you will run on.
 Unpack the folder and run bin/wkhtmltopdf — do not copy only the binary.
@@ -46,5 +49,9 @@ Included
   compress, encrypt, linearize, watermark (qpdf)
   cover / toc / page objects
   merge / split / insert existing PDFs
+  0.12 short options (-s -O -T -R -B -L -d -g -q -n -p -l -h -H -V)
+  -v / --verbose and --log-level none|error|warn|info|verbose
+  desktop viewport for print (fixes 0-width mobile CSS)
+  --attach, --dump-info, TOC page numbers
 
 See README.md and docs/DOC.txt.

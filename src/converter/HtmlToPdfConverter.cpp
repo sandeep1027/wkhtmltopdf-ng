@@ -10,6 +10,7 @@
 #include <QElapsedTimer>
 #include <QPageLayout>
 #include <QPageRanges>
+#include <QSize>
 #include <QDir>
 #include <QEventLoop>
 #include <QFile>
@@ -20,6 +21,9 @@
 #include <QNetworkCookie>
 #include <QXmlStreamWriter>
 #include <QTextStream>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QTimer>
 #include <QTemporaryFile>
 #include <QProcess>
@@ -40,6 +44,22 @@
 #include <functional>
 
 namespace {
+
+int logRank(const QString& level)
+{
+    if (level == QStringLiteral("none")) return 0;
+    if (level == QStringLiteral("error")) return 1;
+    if (level == QStringLiteral("warn")) return 2;
+    if (level == QStringLiteral("info")) return 3;
+    if (level == QStringLiteral("verbose")) return 4;
+    return 3;
+}
+
+void logAt(const GlobalSettings& global, int minRank, const QString& message)
+{
+    if (global.quiet || logRank(global.logLevel) < minRank) return;
+    QTextStream(stderr) << message << '\n';
+}
 
 class HeaderInterceptor final : public QWebEngineUrlRequestInterceptor {
 public:
@@ -107,6 +127,70 @@ bool parseViewportSize(const QString& value, int* width, int* height)
     *width = parts.at(0).toInt(&widthOk);
     *height = parts.at(1).toInt(&heightOk);
     return widthOk && heightOk && *width > 0 && *height > 0;
+}
+
+// A bare QWebEnginePage (no shown view) reports innerWidth/innerHeight = 0 on
+// Qt 6.2 offscreen. That makes screen max-width breakpoints (e.g. 700px) match
+// and collapse table-cell / multi-column layouts. Size the view to the paper
+// in CSS pixels, but never below a desktop 1024x768 so those queries stay off.
+QSize defaultPdfViewport(const QPageLayout& layout)
+{
+    const QSizeF millimeters = layout.pageSize().size(QPageSize::Millimeter);
+    const int pageWidth = qMax(1, qRound(millimeters.width() * 96.0 / 25.4));
+    const int pageHeight = qMax(1, qRound(millimeters.height() * 96.0 / 25.4));
+    return QSize(qMax(1024, pageWidth), qMax(768, pageHeight));
+}
+
+QString rendererDiagnosticsJavascript()
+{
+    return QStringLiteral(
+        "(function(){function dump(sel){const el=document.querySelector(sel);"
+        "if(!el)return{selector:sel,missing:true};"
+        "const s=getComputedStyle(el);const r=el.getBoundingClientRect();"
+        "return{selector:sel,display:s.display,width:s.width,"
+        "backgroundImage:s.backgroundImage,backgroundColor:s.backgroundColor,"
+        "printColorAdjust:s.webkitPrintColorAdjust||s.printColorAdjust,"
+        "rect:{x:r.x,y:r.y,w:r.width,h:r.height}};}"
+        "return{innerWidth:window.innerWidth,innerHeight:window.innerHeight,"
+        "dpr:window.devicePixelRatio,"
+        "bodyWidth:document.body?document.body.getBoundingClientRect().width:0,"
+        "documentWidth:document.documentElement.getBoundingClientRect().width,"
+        "screenMedia:matchMedia('screen').matches,"
+        "printMedia:matchMedia('print').matches,"
+        "responsive700:matchMedia('screen and (max-width: 700px)').matches,"
+        "header:dump('.header'),kpis:dump('.kpis'),kpi:dump('.kpi'),"
+        "columns:dump('.columns'),column:dump('.column'),"
+        "progressTrack:dump('.progress-track'),progressBar:dump('.progress-bar'),"
+        "features:dump('.features'),feature:dump('.feature')};})()");
+}
+
+QString printBackgroundJavascript()
+{
+    // Chromium print defaults to print-color-adjust: economy, which drops
+    // CSS backgrounds and gradients even when PrintElementBackgrounds is on.
+    return QStringLiteral(
+        "(function(){const s=document.createElement('style');"
+        "s.setAttribute('data-wkhtmltopdf-ng-bg','1');"
+        "s.textContent='html{-webkit-print-color-adjust:exact!important;"
+        "print-color-adjust:exact!important}';"
+        "document.head.appendChild(s);})();");
+}
+
+QString waitForPaintJavascript()
+{
+    return QStringLiteral(
+        "(function(){"
+        "if(window.__wkhtmltopdfNgPaintReady===undefined){"
+        "window.__wkhtmltopdfNgPaintReady=false;"
+        "const ready=(document.fonts&&document.fonts.ready)?document.fonts.ready:Promise.resolve();"
+        "ready.then(function(){"
+        "requestAnimationFrame(function(){requestAnimationFrame(function(){"
+        "window.__wkhtmltopdfNgPaintReady=true;});});"
+        "}).catch(function(){window.__wkhtmltopdfNgPaintReady=true;});"
+        "return false;}"
+        "const images=Array.from(document.images).every(function(img){return img.complete;});"
+        "const fonts=!document.fonts||document.fonts.status!=='loading';"
+        "return window.__wkhtmltopdfNgPaintReady&&images&&fonts;})()");
 }
 
 QString loadErrorPolicy(const ObjectSettings& object)
@@ -273,10 +357,7 @@ bool loadCookieJar(QWebEngineProfile* profile, const QString& path, QString* err
         const QByteArray line = rawLine.trimmed();
         if (line.isEmpty() || line.startsWith('#')) continue;
         const QList<QByteArray> fields = line.split('\t');
-        if (fields.size() < 7) {
-            if (error) *error = QStringLiteral("invalid Netscape cookie entry in %1").arg(path);
-            return false;
-        }
+        if (fields.size() < 7) continue; // tolerate malformed entries
 
         QNetworkCookie cookie(fields.at(5), fields.at(6));
         cookie.setDomain(QString::fromUtf8(fields.at(0)));
@@ -313,7 +394,7 @@ void HtmlToPdfConverter::setPhaseCallback(std::function<void(int, int)> callback
 void HtmlToPdfConverter::reportPhase(int phase, int percent)
 {
     if (m_phaseCallback) m_phaseCallback(phase, percent);
-    if (m_global.quiet || m_global.logLevel == QStringLiteral("none")) return;
+    if (m_global.quiet || logRank(m_global.logLevel) < 3) return;
     static const char* names[] = {
         "Loading pages", "Counting pages", "Resolving links",
         "Loading headers and footers", "Printing pages", "Done"
@@ -354,6 +435,34 @@ void applyCoverRules(ObjectSettings* object)
     object->toc = false;
 }
 
+bool writeInfoJson(const QString& outputPath, const QList<OutlineEntry>& outline,
+                   const GlobalSettings& global, QString* error)
+{
+    QJsonObject root;
+    const int pages = outputPath == QStringLiteral("-")
+        ? 0 : countPdfPages(outputPath);
+    root.insert(QStringLiteral("pages"), pages);
+    root.insert(QStringLiteral("title"), global.documentTitle);
+    root.insert(QStringLiteral("author"), global.author);
+    root.insert(QStringLiteral("subject"), global.subject);
+    root.insert(QStringLiteral("keywords"), global.keywords);
+    root.insert(QStringLiteral("pageSize"), global.pageLayout.pageSize().name());
+    root.insert(QStringLiteral("orientation"),
+                global.pageLayout.orientation() == QPageLayout::Landscape
+                    ? QStringLiteral("Landscape") : QStringLiteral("Portrait"));
+    QJsonArray outlineArray;
+    for (const OutlineEntry& entry : outline) {
+        QJsonObject item;
+        item.insert(QStringLiteral("title"), entry.title);
+        item.insert(QStringLiteral("level"), entry.level);
+        item.insert(QStringLiteral("page"), entry.page);
+        outlineArray.append(item);
+    }
+    root.insert(QStringLiteral("outline"), outlineArray);
+    return writeAllFile(global.dumpInfo,
+                        QJsonDocument(root).toJson(QJsonDocument::Indented), error);
+}
+
 }
 
 bool HtmlToPdfConverter::convert(const ObjectSettings& input, const QString& outputPath, QString* error)
@@ -363,7 +472,21 @@ bool HtmlToPdfConverter::convert(const ObjectSettings& input, const QString& out
 
 bool HtmlToPdfConverter::convert(const QList<ObjectSettings>& inputs, const QString& outputPath, QString* error)
 {
-    return convertDocuments(inputs, outputPath, error, true);
+    logAt(m_global, 4, QStringLiteral("Output: %1").arg(outputPath));
+    logAt(m_global, 4, QStringLiteral("Page: %1 %2")
+         .arg(m_global.pageLayout.pageSize().name(),
+              m_global.pageLayout.orientation() == QPageLayout::Landscape
+                  ? QStringLiteral("Landscape") : QStringLiteral("Portrait")));
+    logAt(m_global, 4, QStringLiteral("Objects: %1").arg(inputs.size()));
+    const bool success = convertDocuments(inputs, outputPath, error, true);
+    if (success && !m_global.dumpInfo.isEmpty()) {
+        QString infoError;
+        if (!writeInfoJson(outputPath, m_lastOutline, m_global, &infoError)) {
+            if (error) *error = infoError;
+            return false;
+        }
+    }
+    return success;
 }
 
 bool HtmlToPdfConverter::convertObjectPipeline(const QList<ObjectSettings>& objects,
@@ -401,6 +524,9 @@ bool HtmlToPdfConverter::convertObjectPipeline(const QList<ObjectSettings>& obje
 
     for (int i = 0; i < work.size(); ++i) {
         if (work.at(i).kind == ObjectKind::Toc) continue;
+        const char* kindName = work.at(i).kind == ObjectKind::Cover ? "cover" : "page";
+        logAt(m_global, 4, QStringLiteral("Object %1/%2 (%3): %4")
+             .arg(i + 1).arg(work.size()).arg(QLatin1String(kindName), work.at(i).page));
         auto* temp = new QTemporaryFile(QDir::tempPath() + QStringLiteral("/wkhtmltopdf-ng-obj-XXXXXX.pdf"));
         temp->setAutoRemove(true);
         if (!temp->open()) {
@@ -422,69 +548,102 @@ bool HtmlToPdfConverter::convertObjectPipeline(const QList<ObjectSettings>& obje
         pageCounts[i] = countPdfPages(path);
     }
 
-    QList<OutlineEntry> headings;
-    for (int i = 0; i < work.size(); ++i) {
-        if (work.at(i).kind == ObjectKind::Cover || !work.at(i).includeInOutline) continue;
-        headings.append(outlines.at(i));
-    }
-
     for (int i = 0; i < work.size(); ++i) {
         if (work.at(i).kind != ObjectKind::Toc) continue;
-        QString tocHtml;
-        if (!work.at(i).tocXsl.isEmpty()) {
-            QString xsltError;
-            if (!applyTocXsl(work.at(i).tocXsl, outlineXmlDocument(headings), &tocHtml, &xsltError)) {
+        logAt(m_global, 4, QStringLiteral("Object %1/%2 (toc)").arg(i + 1).arg(work.size()));
+
+        // Heading pages shown in the TOC must be absolute (they include the
+        // pages of everything before each heading AND the TOC's own pages).
+        // The TOC page count is only known after rendering, so render once,
+        // correct the numbers, and re-render if the TOC spans more pages
+        // than guessed. Page numbers never change the row count, so this
+        // converges on the second attempt in practice.
+        auto tocHeadings = [&](int tocPagesGuess) {
+            QList<OutlineEntry> result;
+            int offset = 0;
+            for (int k = 0; k < work.size(); ++k) {
+                if (k == i) {
+                    offset += tocPagesGuess;
+                    continue;
+                }
+                if (work.at(k).kind != ObjectKind::Cover &&
+                    work.at(k).kind != ObjectKind::Toc &&
+                    work.at(k).includeInOutline) {
+                    for (const OutlineEntry& entry : outlines.at(k)) {
+                        OutlineEntry corrected = entry;
+                        corrected.page += offset;
+                        result.append(corrected);
+                    }
+                }
+                offset += pageCounts.at(k);
+            }
+            return result;
+        };
+
+        QString tocPdfPath;
+        int tocPages = 1; // first guess; corrected after the first render
+        for (int attempt = 0; attempt < 3; ++attempt) {
+            const QList<OutlineEntry> correctedHeadings = tocHeadings(tocPages);
+            QString tocHtml;
+            if (!work.at(i).tocXsl.isEmpty()) {
+                QString xsltError;
+                if (!applyTocXsl(work.at(i).tocXsl, outlineXmlDocument(correctedHeadings),
+                                 &tocHtml, &xsltError)) {
+                    cleanup();
+                    if (error) *error = xsltError;
+                    return false;
+                }
+            } else {
+                tocHtml = tocHtmlDocument(work.at(i), correctedHeadings);
+            }
+            auto* htmlFile = new QTemporaryFile(QDir::tempPath() + QStringLiteral("/wkhtmltopdf-ng-toc-XXXXXX.html"));
+            htmlFile->setAutoRemove(true);
+            if (!htmlFile->open()) {
                 cleanup();
-                if (error) *error = xsltError;
+                if (error) *error = htmlFile->errorString();
+                delete htmlFile;
                 return false;
             }
-        } else {
-            tocHtml = tocHtmlDocument(work.at(i), headings);
-        }
-        auto* htmlFile = new QTemporaryFile(QDir::tempPath() + QStringLiteral("/wkhtmltopdf-ng-toc-XXXXXX.html"));
-        htmlFile->setAutoRemove(true);
-        if (!htmlFile->open()) {
-            cleanup();
-            if (error) *error = htmlFile->errorString();
-            delete htmlFile;
-            return false;
-        }
-        const QByteArray html = tocHtml.toUtf8();
-        if (htmlFile->write(html) != html.size()) {
-            cleanup();
-            if (error) *error = QStringLiteral("cannot write TOC HTML");
-            delete htmlFile;
-            return false;
-        }
-        htmlFile->close();
-        temps.append(htmlFile);
+            const QByteArray html = tocHtml.toUtf8();
+            if (htmlFile->write(html) != html.size()) {
+                cleanup();
+                if (error) *error = QStringLiteral("cannot write TOC HTML");
+                delete htmlFile;
+                return false;
+            }
+            htmlFile->close();
+            temps.append(htmlFile);
 
-        ObjectSettings tocObject = work.at(i);
-        tocObject.kind = ObjectKind::Page;
-        tocObject.page = htmlFile->fileName();
-        tocObject.enableLocalFileAccess = true;
-        tocObject.includeInOutline = false;
-        tocObject.toc = false;
+            ObjectSettings tocObject = work.at(i);
+            tocObject.kind = ObjectKind::Page;
+            tocObject.page = htmlFile->fileName();
+            tocObject.enableLocalFileAccess = true;
+            tocObject.includeInOutline = false;
+            tocObject.toc = false;
 
-        auto* pdfFile = new QTemporaryFile(QDir::tempPath() + QStringLiteral("/wkhtmltopdf-ng-toc-XXXXXX.pdf"));
-        pdfFile->setAutoRemove(true);
-        if (!pdfFile->open()) {
-            cleanup();
-            if (error) *error = pdfFile->errorString();
-            delete pdfFile;
-            return false;
+            auto* pdfFile = new QTemporaryFile(QDir::tempPath() + QStringLiteral("/wkhtmltopdf-ng-toc-XXXXXX.pdf"));
+            pdfFile->setAutoRemove(true);
+            if (!pdfFile->open()) {
+                cleanup();
+                if (error) *error = pdfFile->errorString();
+                delete pdfFile;
+                return false;
+            }
+            const QString pdfPath = pdfFile->fileName();
+            pdfFile->close();
+            temps.append(pdfFile);
+            m_lastOutline.clear();
+            if (!convertDocuments(QList<ObjectSettings>{tocObject}, pdfPath, error, false)) {
+                cleanup();
+                return false;
+            }
+            tocPdfPath = pdfPath;
+            pageCounts[i] = countPdfPages(pdfPath);
+            if (pageCounts.at(i) == tocPages) break;
+            tocPages = pageCounts.at(i);
         }
-        const QString pdfPath = pdfFile->fileName();
-        pdfFile->close();
-        temps.append(pdfFile);
-        m_lastOutline.clear();
-        if (!convertDocuments(QList<ObjectSettings>{tocObject}, pdfPath, error, false)) {
-            cleanup();
-            return false;
-        }
-        pdfs[i] = pdfPath;
+        pdfs[i] = tocPdfPath;
         outlines[i] = m_lastOutline;
-        pageCounts[i] = countPdfPages(pdfPath);
     }
 
     QTemporaryFile merged(QDir::tempPath() + QStringLiteral("/wkhtmltopdf-ng-merged-XXXXXX.pdf"));
@@ -496,6 +655,7 @@ bool HtmlToPdfConverter::convertObjectPipeline(const QList<ObjectSettings>& obje
     }
     const QString mergedPath = merged.fileName();
     merged.close();
+    logAt(m_global, 4, QStringLiteral("Merging %1 objects").arg(work.size()));
     if (!mergePdfFiles(pdfs, mergedPath, error)) {
         cleanup();
         return false;
@@ -776,6 +936,7 @@ bool HtmlToPdfConverter::convertDocuments(const QList<ObjectSettings>& inputs, c
     if (object.minimumFontSize > 0) {
         webSettings->setFontSize(QWebEngineSettings::MinimumFontSize, object.minimumFontSize);
     }
+    webSettings->setAttribute(QWebEngineSettings::PrintElementBackgrounds, object.printBackground);
 
     int viewportWidth = 0;
     int viewportHeight = 0;
@@ -783,12 +944,18 @@ bool HtmlToPdfConverter::convertDocuments(const QList<ObjectSettings>& inputs, c
         if (error) *error = QStringLiteral("invalid viewport size %1").arg(object.viewportSize);
         return false;
     }
-    std::unique_ptr<QWebEngineView> view;
-    if (viewportWidth > 0 && viewportHeight > 0) {
-        view = std::make_unique<QWebEngineView>();
-        view->setPage(&page);
-        view->resize(viewportWidth, viewportHeight);
+    if (viewportWidth <= 0 || viewportHeight <= 0) {
+        const QSize fallback = defaultPdfViewport(m_global.pageLayout);
+        viewportWidth = fallback.width();
+        viewportHeight = fallback.height();
     }
+    // Must show() the view: resize() alone leaves an offscreen widget at 0x0,
+    // so Chromium keeps innerWidth=0 and screen max-width queries match.
+    std::unique_ptr<QWebEngineView> view = std::make_unique<QWebEngineView>();
+    view->setPage(&page);
+    view->resize(viewportWidth, viewportHeight);
+    view->show();
+    logAt(m_global, 4, QStringLiteral("Viewport: %1x%2").arg(viewportWidth).arg(viewportHeight));
 
     QEventLoop loop;
     QElapsedTimer timeout;
@@ -826,9 +993,8 @@ bool HtmlToPdfConverter::convertDocuments(const QList<ObjectSettings>& inputs, c
     std::function<void()> runNext;
     std::function<void()> waitForFonts;
     std::function<void()> checkMediaThenInject;
-    printPage = [&]() {
-        if (printStarted) return;
-        printStarted = true;
+    auto startPrint = [&]() {
+        logAt(m_global, 4, QStringLiteral("Printing %1").arg(outputPath));
         if (finalize) reportPhase(4, 80);
         const QPageLayout layout = m_global.pageLayout;
 #if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
@@ -958,6 +1124,21 @@ bool HtmlToPdfConverter::convertDocuments(const QList<ObjectSettings>& inputs, c
 #else
         }, layout);
 #endif
+    };
+
+    printPage = [&]() {
+        if (printStarted) return;
+        printStarted = true;
+        if (m_global.logLevel != QStringLiteral("verbose") || !object.enableJavascript) {
+            startPrint();
+            return;
+        }
+        page.runJavaScript(rendererDiagnosticsJavascript(), [&](const QVariant& value) {
+            const QJsonDocument json = QJsonDocument::fromVariant(value);
+            logAt(m_global, 4, QStringLiteral("Renderer diagnostics: %1")
+                 .arg(QString::fromUtf8(json.toJson(QJsonDocument::Compact))));
+            startPrint();
+        });
     };
 
     waitForWindowStatus = [&]() {
@@ -1120,13 +1301,7 @@ bool HtmlToPdfConverter::convertDocuments(const QList<ObjectSettings>& inputs, c
         const bool hasTitle = !m_global.documentTitle.isEmpty();
         const bool hasGrayscale = m_global.grayscale;
         const bool hideBackground = !object.printBackground;
-        const bool rewriteLinks = object.disableExternalLinks || object.disableInternalLinks;
-        if (object.userStyleSheet.isEmpty() && headerFooter.isEmpty() && toc.isEmpty() &&
-            !hasTitle && !hasGrayscale && !hideBackground && !rewriteLinks && !object.disableForms &&
-            !object.keepRelativeLinks && m_global.printMediaType) {
-            runNext();
-            return;
-        }
+        const bool printBackgrounds = object.printBackground;
 
         QString css;
         if (!object.userStyleSheet.isEmpty()) {
@@ -1158,6 +1333,8 @@ bool HtmlToPdfConverter::convertDocuments(const QList<ObjectSettings>& inputs, c
                 "'@media print{*{background-image:none!important;box-shadow:none!important;}"
                 "html,body,*{background-color:transparent!important}html,body{background:#fff!important}}';"
                 "document.head.appendChild(s);})();\n");
+        } else if (printBackgrounds) {
+            script += printBackgroundJavascript();
         }
         if (object.disableExternalLinks || object.disableInternalLinks || object.disableForms) {
             script += QStringLiteral("(function(){");
@@ -1191,15 +1368,10 @@ bool HtmlToPdfConverter::convertDocuments(const QList<ObjectSettings>& inputs, c
             checkMediaThenInject();
             return;
         }
-        page.runJavaScript(
-            QStringLiteral("(function(){"
-                           "const fonts=!document.fonts||document.fonts.status!=='loading';"
-                           "const images=Array.from(document.images).every(function(img){return img.complete;});"
-                           "return fonts&&images;})()"),
-            [&](const QVariant& value) {
-                if (value.toBool()) checkMediaThenInject();
-                else QTimer::singleShot(50, &loop, waitForFonts);
-            });
+        page.runJavaScript(waitForPaintJavascript(), [&](const QVariant& value) {
+            if (value.toBool()) checkMediaThenInject();
+            else QTimer::singleShot(50, &loop, waitForFonts);
+        });
     };
 
     checkMediaThenInject = [&]() {
@@ -1272,6 +1444,8 @@ bool HtmlToPdfConverter::convertDocuments(const QList<ObjectSettings>& inputs, c
             } else if (policy != QStringLiteral("ignore")) {
                 if (loadAttempts < m_global.retry) {
                     ++loadAttempts;
+                    logAt(m_global, 4, QStringLiteral("Retry %1/%2: %3")
+                         .arg(loadAttempts).arg(m_global.retry).arg(inputs.at(inputIndex).page));
                     page.triggerAction(QWebEnginePage::Reload);
                     return;
                 }
@@ -1330,6 +1504,7 @@ bool HtmlToPdfConverter::convertDocuments(const QList<ObjectSettings>& inputs, c
     });
 
     const QString inputPage = object.page;
+    logAt(m_global, 4, QStringLiteral("Loading %1").arg(inputPage));
     if (inputPage == QStringLiteral("-")) {
         if (inputs.size() > 1) {
             finish(false, QStringLiteral("stdin can only be used as a single input document"));
@@ -1407,8 +1582,17 @@ bool HtmlToPdfConverter::convertDocuments(const QList<ObjectSettings>& inputs, c
 
     if (!success && localError.isEmpty()) loop.exec();
     if (!object.cookieJar.isEmpty()) {
+        // Wait until no new cookie has arrived for a short quiet period (or a
+        // hard cap) so cookies set near the end of the load are not lost.
         QEventLoop drain;
-        QTimer::singleShot(200, &drain, &QEventLoop::quit);
+        QTimer quietTimer;
+        quietTimer.setInterval(100);
+        quietTimer.setSingleShot(true);
+        QObject::connect(&quietTimer, &QTimer::timeout, &drain, &QEventLoop::quit);
+        QObject::connect(profile.cookieStore(), &QWebEngineCookieStore::cookieAdded, &drain,
+                         [&](const QNetworkCookie&) { quietTimer.start(); });
+        QTimer::singleShot(3000, &drain, &QEventLoop::quit);
+        quietTimer.start();
         drain.exec();
         QByteArray jar("# Netscape HTTP Cookie File\n");
         for (const QNetworkCookie& cookie : collectedCookies) {

@@ -47,8 +47,11 @@ inline void prepareHeadlessQt(int argc = 0, char** argv = nullptr)
         for (int i = 1; i < argc; ++i) {
             if (!argv[i]) continue;
             if (std::strcmp(argv[i], "--debug-javascript") == 0) verbose = true;
+            if (std::strcmp(argv[i], "--verbose") == 0 || std::strcmp(argv[i], "-v") == 0)
+                verbose = true;
             if (std::strcmp(argv[i], "--log-level") == 0 && i + 1 < argc && argv[i + 1] &&
-                (std::strcmp(argv[i + 1], "info") == 0 || std::strcmp(argv[i + 1], "warn") == 0)) {
+                (std::strcmp(argv[i + 1], "info") == 0 || std::strcmp(argv[i + 1], "warn") == 0 ||
+                 std::strcmp(argv[i + 1], "verbose") == 0)) {
                 verbose = true;
             }
         }
