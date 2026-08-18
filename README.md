@@ -4,7 +4,7 @@ HTML to PDF and HTML to image CLI, built on **Qt 6 WebEngine** (Chromium).
 It is a modern replacement for archived [wkhtmltopdf](https://wkhtmltopdf.org/)
 (Qt WebKit).
 
-Version **0.14.2**. License: LGPL-3.0. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).
+Version **0.14.3**. License: LGPL-3.0. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).
 This project is independent and is not affiliated with wkhtmltopdf.org.
 
 Full flag list, packaging, limits, and tests: [`docs/DOC.txt`](docs/DOC.txt).
@@ -84,7 +84,7 @@ cannot shrink to a few megabytes.
 | CentOS / RHEL **7** | Not supported (glibc 2.17). Use Docker. |
 
 ```sh
-tar -xJf wkhtmltopdf-ng_0.14.2_linux-amd64.tar.xz   # or the el9 file
+tar -xJf wkhtmltopdf-ng_0.14.3_linux-amd64.tar.xz   # or the el9 file
 ./wkhtmltopdf-ng/bin/wkhtmltopdf --version
 ./wkhtmltopdf-ng/bin/wkhtmltopdf --enable-local-file-access in.html out.pdf
 ```
